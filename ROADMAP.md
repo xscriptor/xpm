@@ -29,7 +29,7 @@ and TOML configuration parser are implemented and tested.
 - [x] Implement repo subcommand — xpm repo add, remove, list (#49)
 - [x] Implement temporary repo file — /etc/xpm.d/ directory for user-added repos (#50)
 - [x] Set predefined default repo in config — GitHub Pages x-repo as built-in (#51)
-- [ ] Implement custom help parameter — xpm help with detailed usage info
+- [ ] Implement custom help parameter — xpm help with detailed usage info (#54)
 
 ## Phase 2 · FFI Bindings with libalpm — Transitional Bridge <!-- phase:phase-2:ffi-bridge -->
 
@@ -92,7 +92,7 @@ and TOML configuration parser are implemented and tested.
 - [ ] Optional TUI interface with ratatui (#43)
 - [ ] Smart mirror selection (#44)
 - [ ] Configurable package cache (#45)
-- [ ] Implement translations — multi-language support based on system locale
+- [ ] Implement translations — multi-language support based on system locale (#55)
 
 ---
 
