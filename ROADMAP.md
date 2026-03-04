@@ -11,18 +11,20 @@ The project is in its **documentation phase** — a technical architecture docum
 
 ## Phase 0 · Project Scaffolding <!-- phase:phase-0:scaffolding -->
 
-- [ ] Initialize Rust crate with cargo init (#1)
-- [ ] Configure Cargo workspace — multi-crate (#2)
-- [ ] Add linter and formatter configuration (#3)
+- [x] Initialize Rust crate with cargo init (#1)
+- [x] Configure Cargo workspace — multi-crate (#2)
+- [x] Add linter and formatter configuration (#3)
 - [ ] Set up CI pipeline (#4)
-- [ ] Add license and crate metadata (#5)
+- [x] Add license and crate metadata (#5)
 
 ## Phase 1 · CLI and Configuration <!-- phase:phase-1:cli -->
 
-- [ ] Implement CLI interface with clap (#6)
-- [ ] Implement configuration parser (#7)
-- [ ] Implement main.rs orchestration (#8)
-- [ ] Integrate lib.rs with CLI (#9)
+- [x] Implement CLI interface with clap (#6)
+- [x] Implement configuration parser (#7)
+- [x] Implement main.rs orchestration (#8)
+- [x] Integrate lib.rs with CLI (#9)
+- [ ] Define activation commands and parameter matrix — document all CLI invocations, flags and aliases
+- [ ] Define fetch targets — repositories, mirrors and sync endpoints
 
 ## Phase 2 · FFI Bindings with libalpm — Transitional Bridge <!-- phase:phase-2:ffi-bridge -->
 

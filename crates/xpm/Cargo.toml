@@ -1,0 +1,19 @@
+[package]
+name = "xpm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "CLI frontend for the xpm package manager"
+
+[[bin]]
+name = "xpm"
+path = "src/main.rs"
+
+[dependencies]
+clap = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+xpm-core = { workspace = true }

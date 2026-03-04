@@ -1,0 +1,77 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# xpm.conf — Configuration file for the xpm package manager
+# ──────────────────────────────────────────────────────────────────────────────
+#
+# This is the example configuration file. Copy it to /etc/xpm.conf and edit
+# to suit your system.
+#
+# See xpm(8) for details on configuration directives.
+# ──────────────────────────────────────────────────────────────────────────────
+
+[options]
+# Root installation directory (default: /)
+root_dir = "/"
+
+# Database directory (default: /var/lib/xpm/)
+db_path = "/var/lib/xpm/"
+
+# Package cache directory (default: /var/cache/xpm/pkg/)
+cache_dir = "/var/cache/xpm/pkg/"
+
+# Log file location (default: /var/log/xpm.log)
+log_file = "/var/log/xpm.log"
+
+# GPG keyring directory (default: /etc/pacman.d/gnupg/)
+gpg_dir = "/etc/pacman.d/gnupg/"
+
+# System architecture (auto-detected if not set)
+# architecture = "x86_64"
+
+# Default signature verification level
+# Options: "required", "optional", "never"
+sig_level = "optional"
+
+# Enable colored terminal output
+color = true
+
+# Number of parallel downloads (minimum: 1)
+parallel_downloads = 5
+
+# Check available disk space before installing
+check_space = true
+
+# Packages that should never be upgraded
+# hold_pkg = ["linux", "linux-headers"]
+
+# Packages to ignore during upgrades
+# ignore_pkg = ["some-unstable-pkg"]
+
+# Groups of packages to ignore during upgrades
+# ignore_group = ["some-group"]
+
+
+# ── Repositories ─────────────────────────────────────────────────────────────
+#
+# Repositories are checked in the order they appear. The first repository
+# that provides a package wins.
+#
+# Each [[repo]] block requires:
+#   name   — repository identifier
+#   server — list of mirror URLs ($repo and $arch are substituted)
+#
+# Optional:
+#   sig_level — override the global signature level for this repo
+
+[[repo]]
+name = "core"
+server = [
+    "https://mirror.rackspace.com/archlinux/$repo/os/$arch",
+    "https://mirrors.kernel.org/archlinux/$repo/os/$arch",
+]
+
+[[repo]]
+name = "extra"
+server = [
+    "https://mirror.rackspace.com/archlinux/$repo/os/$arch",
+    "https://mirrors.kernel.org/archlinux/$repo/os/$arch",
+]

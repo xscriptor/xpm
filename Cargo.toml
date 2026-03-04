@@ -1,0 +1,30 @@
+[workspace]
+members = ["crates/xpm", "crates/xpm-core"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+authors = ["xscriptor"]
+repository = "https://github.com/xscriptordev/xpm"
+description = "Modern Rust-based package manager for X Distribution"
+
+[workspace.dependencies]
+# CLI
+clap = { version = "4", features = ["derive", "env", "color"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+
+# Error handling
+anyhow = "1"
+thiserror = "2"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
+# Internal crates
+xpm-core = { path = "crates/xpm-core" }
