@@ -16,7 +16,7 @@ and TOML configuration parser are implemented and tested.
 - [x] Add linter and formatter configuration (#3)
 - [ ] Set up CI pipeline (#4)
 - [x] Add license and crate metadata (#5)
-- [ ] Update README to reflect current architecture and repo strategy
+- [ ] Update README to reflect current architecture and repo strategy (#48)
 
 ## Phase 1 · CLI and Configuration <!-- phase:phase-1:cli -->
 
@@ -26,9 +26,9 @@ and TOML configuration parser are implemented and tested.
 - [x] Integrate lib.rs with CLI (#9)
 - [ ] Define activation commands and parameter matrix — document all CLI invocations, flags and aliases (#46)
 - [ ] Define fetch targets — repositories, mirrors and sync endpoints (#47)
-- [ ] Implement repo subcommand — xpm repo add, remove, list
-- [ ] Implement temporary repo file — /etc/xpm.d/ directory for user-added repos
-- [ ] Set predefined default repo in config — GitHub Pages x-repo as built-in
+- [ ] Implement repo subcommand — xpm repo add, remove, list (#49)
+- [ ] Implement temporary repo file — /etc/xpm.d/ directory for user-added repos (#50)
+- [ ] Set predefined default repo in config — GitHub Pages x-repo as built-in (#51)
 
 ## Phase 2 · FFI Bindings with libalpm — Transitional Bridge <!-- phase:phase-2:ffi-bridge -->
 
@@ -57,8 +57,8 @@ and TOML configuration parser are implemented and tested.
 - [ ] Implement alpm-repo-files support (#23)
 - [ ] Implement agnostic symlink handling (#24)
 - [ ] Implement remote database sync (#25)
-- [ ] Implement GitHub Pages repo backend — fetch packages from static hosting
-- [ ] Implement repo URL variable substitution — $repo, $arch placeholders
+- [ ] Implement GitHub Pages repo backend — fetch packages from static hosting (#52)
+- [ ] Implement repo URL variable substitution — $repo, $arch placeholders (#53)
 
 ## Phase 6 · Security and Verification <!-- phase:phase-6:security -->
 
