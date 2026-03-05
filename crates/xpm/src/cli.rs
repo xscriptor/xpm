@@ -84,6 +84,9 @@ pub enum Command {
 
     /// Manage repositories — add, remove, or list.
     Repo(RepoArgs),
+
+    /// Display detailed usage information and guides.
+    Usage(HelpArgs),
 }
 
 // ── Subcommand arguments ────────────────────────────────────────────────────
@@ -233,4 +236,10 @@ pub struct RepoRemoveArgs {
     /// Name of the repository to remove.
     #[arg(required = true)]
     pub name: String,
+}
+
+#[derive(Debug, clap::Args)]
+pub struct HelpArgs {
+    /// Topic to display help for (commands, config, repos, or a specific command).
+    pub topic: Option<String>,
 }
