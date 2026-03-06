@@ -59,9 +59,14 @@ Next step: Phase 4 (package format and archives).
 
 ## Phase 4 · Package Format and Archives <!-- phase:phase-4:packages -->
 
-- [ ] Implement .pkg.tar.zst parser and builder (#18)
-  - [ ] Implement .pkg.tar.zst archive reader — zstd decompression + tar extraction
-  - [ ] Implement .pkg.tar.zst builder — create packages from directory tree
+- [x] Implement .pkg.tar.zst parser and builder (#18)
+  - [x] Implement .pkg.tar.zst archive reader — zstd decompression + tar extraction
+  - [x] Implement .pkg.tar.zst builder — create packages from directory tree
+- [ ] Define .xp package format — X Package native format
+  - [ ] Document .xp specification — tar.zst archive with .PKGINFO, .BUILDINFO, .MTREE
+  - [ ] Implement .xp archive reader — zstd decompression + tar extraction
+  - [ ] Support dual extensions — .xp (X Distribution) and .pkg.tar.zst (Arch compatibility)
+- [/] Create xpkg tool — separate package building from xpm into dedicated repository
 - [ ] Implement package metadata parser (#19)
   - [ ] Implement .PKGINFO parser — extract name, version, dependencies, provides, conflicts
   - [ ] Implement .BUILDINFO parser — reproducible build environment metadata
@@ -70,8 +75,8 @@ Next step: Phase 4 (package format and archives).
 - [ ] Implement post-installation integrity validation (#20)
   - [ ] Verify extracted files against .MTREE checksums
 - [ ] Write package format tests (#21)
-  - [ ] Round-trip tests — build and re-parse packages
-  - [ ] Parse real Arch Linux .pkg.tar.zst packages
+  - [ ] Round-trip tests — build and re-parse .xp packages
+  - [ ] Parse real Arch Linux .pkg.tar.zst packages for compatibility
 
 ## Phase 5 · Repository Database <!-- phase:phase-5:repo-db -->
 

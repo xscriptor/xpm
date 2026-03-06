@@ -4,13 +4,14 @@
 
 ## Overview
 
-`xpm` is a native Rust replacement for `pacman` and `libalpm`, designed for the X distribution. It uses the ALPM package format (`.pkg.tar.zst`) and is compatible with Arch Linux repositories while providing a modern, memory-safe implementation.
+`xpm` is a native Rust replacement for `pacman` and `libalpm`, designed for the X distribution. It uses the `.xp` package format (X Package) natively and maintains compatibility with Arch Linux `.pkg.tar.zst` packages.
 
 ### Key features
 
 - **Pure Rust** -- zero C dependencies at any stage
+- **Native .xp format** -- X Package format (tar.zst) with `.PKGINFO` / `.BUILDINFO` / `.MTREE` metadata
 - **SAT-based dependency resolver** -- powered by `resolvo` with CDCL and watched-literal propagation
-- **ALPM compatible** -- reads `.pkg.tar.zst` packages, `alpm-repo-db` databases, and `.PKGINFO` / `.BUILDINFO` / `.MTREE` metadata
+- **Arch compatible** -- reads `.pkg.tar.zst` packages and `alpm-repo-db` databases
 - **Flexible repository management** -- predefined and temporary repos with `xpm repo add/remove/list`
 - **OpenPGP verification** -- detached signatures with Web of Trust model
 - **TOML configuration** -- clean, human-readable config at `/etc/xpm.conf`

@@ -13,7 +13,7 @@ can have multiple mirrors for redundancy and performance.
 ```
 Repository
 ├── Database files (.db, .files)
-└── Package files (.pkg.tar.zst)
+└── Package files (.xp or .pkg.tar.zst)
 ```
 
 ---
@@ -130,8 +130,8 @@ x-repo/
 │   ├── x-repo.db
 │   ├── x-repo.db.sig
 │   ├── x-repo.files
-│   ├── package-1.0.0-1-x86_64.pkg.tar.zst
-│   ├── package-1.0.0-1-x86_64.pkg.tar.zst.sig
+│   ├── package-1.0.0-1-x86_64.xp
+│   ├── package-1.0.0-1-x86_64.xp.sig
 │   └── ...
 └── aarch64/
     ├── x-repo.db
