@@ -8,8 +8,11 @@ Phases 0–1 mostly complete — project scaffolding, CLI with 8 subcommands,
 and TOML configuration parser are implemented and tested.
 Phase 3 complete — native SAT-based dependency resolver using resolvo,
 with ALPM-compatible version comparison, dependency parsing, conflict
-handling, and a full integration test suite (56 tests).
-Next step: Phase 4 (package format and archives).
+handling, and a full integration test suite.
+Phase 4 complete — package format support with .xp/.pkg.tar.zst readers,
+metadata parsers (.PKGINFO, .BUILDINFO, .MTREE), archive extraction,
+and post-installation integrity validation (94 tests).
+Next step: Phase 5 (repository database).
 
 ---
 
@@ -62,20 +65,20 @@ Next step: Phase 4 (package format and archives).
 - [x] Implement .pkg.tar.zst parser and builder (#18)
   - [x] Implement .pkg.tar.zst archive reader — zstd decompression + tar extraction
   - [x] Implement .pkg.tar.zst builder — create packages from directory tree
-- [ ] Define .xp package format — X Package native format (#59)
-  - [ ] Document .xp specification — tar.zst archive with .PKGINFO, .BUILDINFO, .MTREE
-  - [ ] Implement .xp archive reader — zstd decompression + tar extraction
-  - [ ] Support dual extensions — .xp (X Distribution) and .pkg.tar.zst (Arch compatibility)
-- [/] Create xpkg tool — separate package building from xpm into dedicated repository (#60)
-- [ ] Implement package metadata parser (#19)
-  - [ ] Implement .PKGINFO parser — extract name, version, dependencies, provides, conflicts
-  - [ ] Implement .BUILDINFO parser — reproducible build environment metadata
-  - [ ] Implement .MTREE parser — file integrity hashes and permissions
-  - [ ] Implement PackageMeta types — unified structs for all package metadata fields
-- [ ] Implement post-installation integrity validation (#20)
-  - [ ] Verify extracted files against .MTREE checksums
-- [ ] Write package format tests (#21)
-  - [ ] Round-trip tests — build and re-parse .xp packages
+- [x] Define .xp package format — X Package native format (#59)
+  - [x] Document .xp specification — tar.zst archive with .PKGINFO, .BUILDINFO, .MTREE
+  - [x] Implement .xp archive reader — zstd decompression + tar extraction
+  - [x] Support dual extensions — .xp (X Distribution) and .pkg.tar.zst (Arch compatibility)
+- [x] Create xpkg tool — separate package building from xpm into dedicated repository (#60)
+- [x] Implement package metadata parser (#19)
+  - [x] Implement .PKGINFO parser — extract name, version, dependencies, provides, conflicts
+  - [x] Implement .BUILDINFO parser — reproducible build environment metadata
+  - [x] Implement .MTREE parser — file integrity hashes and permissions
+  - [x] Implement PackageMeta types — unified structs for all package metadata fields
+- [x] Implement post-installation integrity validation (#20)
+  - [x] Verify extracted files against .MTREE checksums
+- [x] Write package format tests (#21)
+  - [x] Round-trip tests — build and re-parse .xp packages
   - [ ] Parse real Arch Linux .pkg.tar.zst packages for compatibility
 
 ## Phase 5 · Repository Database <!-- phase:phase-5:repo-db -->

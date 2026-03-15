@@ -199,10 +199,7 @@ fn solve_dependency_chain() {
 
 #[test]
 fn solve_multiple_root_packages() {
-    let mut provider = build_provider(vec![
-        simple("bash", "5.2-1"),
-        simple("vim", "9.1-1"),
-    ]);
+    let mut provider = build_provider(vec![simple("bash", "5.2-1"), simple("vim", "9.1-1")]);
 
     let bash_id = provider.pool.intern_name("bash");
     provider

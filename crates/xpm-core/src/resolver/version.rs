@@ -302,10 +302,7 @@ mod tests {
     fn vercmp_epoch() {
         assert_eq!(Version::cmp_versions("1:1.0", "2:1.0"), Ordering::Less);
         assert_eq!(Version::cmp_versions("2:1.0", "1:1.0"), Ordering::Greater);
-        assert_eq!(
-            Version::cmp_versions("1:1.0", "0:2.0"),
-            Ordering::Greater
-        );
+        assert_eq!(Version::cmp_versions("1:1.0", "0:2.0"), Ordering::Greater);
     }
 
     // ── vercmp — numeric segments ────────────────────────────────────
@@ -347,10 +344,7 @@ mod tests {
 
     #[test]
     fn vercmp_real_world() {
-        assert_eq!(
-            Version::cmp_versions("6.2.9-1", "6.2.10-1"),
-            Ordering::Less
-        );
+        assert_eq!(Version::cmp_versions("6.2.9-1", "6.2.10-1"), Ordering::Less);
         assert_eq!(
             Version::cmp_versions("2:4.14.1-1", "2:4.14.2-1"),
             Ordering::Less

@@ -8,8 +8,8 @@ use std::fmt;
 
 use resolvo::{
     ArenaId, Candidates, Condition, ConditionId, Dependencies, DependencyProvider,
-    HintDependenciesAvailable, Interner, KnownDependencies, NameId, SolvableId,
-    SolverCache, StringId, VersionSetId, VersionSetUnionId,
+    HintDependenciesAvailable, Interner, KnownDependencies, NameId, SolvableId, SolverCache,
+    StringId, VersionSetId, VersionSetUnionId,
 };
 
 use crate::resolver::dependency::DepConstraint;
@@ -108,7 +108,11 @@ impl DependencyProvider for XpmProvider {
                 // resolvo's "non-matching → forbidden" logic correctly
                 // forbids the right candidates.
                 let matches = if entry.negated { !raw_match } else { raw_match };
-                if inverse { !matches } else { matches }
+                if inverse {
+                    !matches
+                } else {
+                    matches
+                }
             })
             .collect()
     }
@@ -128,11 +132,7 @@ impl DependencyProvider for XpmProvider {
         })
     }
 
-    async fn sort_candidates(
-        &self,
-        _solver: &SolverCache<Self>,
-        solvables: &mut [SolvableId],
-    ) {
+    async fn sort_candidates(&self, _solver: &SolverCache<Self>, solvables: &mut [SolvableId]) {
         // Sort highest version first — the solver tries the first candidate
         solvables.sort_by(|&a, &b| {
             let va = &self.pool.candidate(a).version;
@@ -152,9 +152,7 @@ impl DependencyProvider for XpmProvider {
             if let Some(&dep_name_id) = self.pool.name_to_id.get(&dep.name) {
                 // Look through existing version sets
                 if let Some(vs_id) = self.find_version_set(dep_name_id, dep) {
-                    known
-                        .requirements
-                        .push(vs_id.into());
+                    known.requirements.push(vs_id.into());
                 }
             }
             // If the dependency name is unknown, we skip it (it will be caught
@@ -180,7 +178,11 @@ impl DependencyProvider for XpmProvider {
 
 impl XpmProvider {
     /// Find a normal (non-negated) version set matching the given constraint.
-    fn find_version_set(&self, name_id: NameId, constraint: &DepConstraint) -> Option<VersionSetId> {
+    fn find_version_set(
+        &self,
+        name_id: NameId,
+        constraint: &DepConstraint,
+    ) -> Option<VersionSetId> {
         for (i, entry) in self.pool.version_sets.iter().enumerate() {
             if entry.name_id == name_id && !entry.negated && entry.constraint == *constraint {
                 return Some(VersionSetId::from_usize(i));

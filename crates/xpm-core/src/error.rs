@@ -47,6 +47,9 @@ pub enum XpmError {
     #[error("signature verification failed: {0}")]
     SignatureError(String),
 
+    #[error("package error: {0}")]
+    Package(String),
+
     #[error("{0}")]
     Other(String),
 }

@@ -173,7 +173,11 @@ impl PackagePool {
     // ── Version set management ───────────────────────────────────────
 
     /// Intern a version set (name + constraint pair).
-    pub fn intern_version_set(&mut self, name_id: NameId, constraint: DepConstraint) -> VersionSetId {
+    pub fn intern_version_set(
+        &mut self,
+        name_id: NameId,
+        constraint: DepConstraint,
+    ) -> VersionSetId {
         let id = VersionSetId::from_usize(self.version_sets.len());
         self.version_sets.push(VersionSetEntry {
             name_id,
@@ -212,7 +216,8 @@ impl PackagePool {
     /// Intern a version set union.
     pub fn intern_version_set_union(&mut self, members: Vec<VersionSetId>) -> VersionSetUnionId {
         let id = VersionSetUnionId::from_usize(self.version_set_unions.len());
-        self.version_set_unions.push(VersionSetUnionEntry { members });
+        self.version_set_unions
+            .push(VersionSetUnionEntry { members });
         id
     }
 

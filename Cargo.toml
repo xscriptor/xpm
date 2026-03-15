@@ -26,6 +26,15 @@ thiserror = "2"
 resolvo = "0.10"
 itertools = "0.14"
 
+# Archive and compression
+tar = "0.4"
+zstd = "0.13"
+flate2 = "1"
+xz2 = "0.1"
+
+# Cryptography
+sha2 = "0.10"
+
 # Logging
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
