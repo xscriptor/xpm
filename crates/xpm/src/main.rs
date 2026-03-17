@@ -7,12 +7,19 @@ mod cli;
 
 use anyhow::{Context, Result};
 use clap::Parser;
+use std::collections::HashMap;
+use std::path::Path;
+use std::path::PathBuf;
+use std::thread;
 use tracing::Level;
 use tracing_subscriber::EnvFilter;
 
 use cli::{Cli, Command};
+use xpm_core::config::Repository;
 use xpm_core::repo::RepoManager;
-use xpm_core::XpmConfig;
+use xpm_core::repo_db::{merge_files_db, parse_sync_db};
+use xpm_core::repo_sync::sync_repo_databases;
+use xpm_core::{XpmConfig, XpmError};
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -83,11 +90,137 @@ fn main() -> Result<()> {
 fn cmd_sync(config: &XpmConfig, args: &cli::SyncArgs) -> Result<()> {
     let force = if args.force { " (forced)" } else { "" };
     println!(":: Synchronizing package databases{force}...");
+
+    let arch = config
+        .options
+        .architecture
+        .clone()
+        .unwrap_or_else(|| std::env::consts::ARCH.to_string());
+    let sync_dir = config.options.db_path.join("sync");
+
+    let remote_results = sync_repositories_in_parallel(
+        &config.repositories,
+        &arch,
+        &sync_dir,
+        3,
+        config.options.parallel_downloads.max(1) as usize,
+    );
+    let mut remote_by_repo: HashMap<String, Result<xpm_core::repo_sync::RepoSyncResult, XpmError>> =
+        remote_results.into_iter().collect();
+
     for repo in &config.repositories {
         println!("   {} — {} server(s)", repo.name, repo.server.len());
+
+        match remote_by_repo
+            .remove(&repo.name)
+            .unwrap_or_else(|| Err(XpmError::Other("missing remote sync result".to_string())))
+        {
+            Ok(result) => {
+                println!("     mirror: {}", result.mirror);
+                if result.db_downloaded {
+                    println!("     remote: {}.db updated", repo.name);
+                }
+                if result.files_downloaded {
+                    println!("     remote: {}.files updated", repo.name);
+                }
+            }
+            Err(err) => {
+                tracing::warn!(repo = %repo.name, error = %err, "remote sync failed");
+                println!("     remote: unavailable ({err})");
+            }
+        }
+
+        let db_path = sync_dir.join(format!("{}.db", repo.name));
+        if db_path.exists() {
+            match parse_sync_db(&db_path, &repo.name) {
+                Ok(mut db) => {
+                    let files_path = sync_dir.join(format!("{}.files", repo.name));
+                    if files_path.exists() {
+                        if let Err(err) = merge_files_db(&files_path, &mut db) {
+                            tracing::warn!(
+                                repo = %repo.name,
+                                path = %files_path.display(),
+                                error = %err,
+                                "failed to parse .files database"
+                            );
+                        }
+                    }
+
+                    let with_files = db.entries.iter().filter(|e| !e.files.is_empty()).count();
+                    println!(
+                        "     local db: {} package(s) loaded ({} with file lists)",
+                        db.entries.len(),
+                        with_files
+                    );
+                }
+                Err(err) => {
+                    tracing::warn!(
+                        repo = %repo.name,
+                        path = %db_path.display(),
+                        error = %err,
+                        "failed to parse local sync database"
+                    );
+                    println!("     local db: parse error ({err})");
+                }
+            }
+        } else {
+            println!(
+                "     local db: not found at {}",
+                display_rel_or_abs(&db_path)
+            );
+        }
     }
     println!(":: Sync complete (stub).");
     Ok(())
+}
+
+fn display_rel_or_abs(path: &PathBuf) -> String {
+    std::env::current_dir()
+        .ok()
+        .and_then(|cwd| path.strip_prefix(cwd).ok().map(|p| p.display().to_string()))
+        .unwrap_or_else(|| path.display().to_string())
+}
+
+fn sync_repositories_in_parallel(
+    repositories: &[Repository],
+    arch: &str,
+    sync_dir: &Path,
+    retries: u32,
+    max_parallel: usize,
+) -> Vec<(
+    String,
+    Result<xpm_core::repo_sync::RepoSyncResult, XpmError>,
+)> {
+    let mut results = Vec::with_capacity(repositories.len());
+
+    for chunk in repositories.chunks(max_parallel.max(1)) {
+        let mut handles = Vec::with_capacity(chunk.len());
+
+        for repo in chunk {
+            let repo_clone = repo.clone();
+            let arch_owned = arch.to_string();
+            let sync_dir_owned = sync_dir.to_path_buf();
+
+            handles.push(thread::spawn(move || {
+                let name = repo_clone.name.clone();
+                let result =
+                    sync_repo_databases(&repo_clone, &arch_owned, &sync_dir_owned, retries);
+                (name, result)
+            }));
+        }
+
+        for handle in handles {
+            match handle.join() {
+                Ok(result) => results.push(result),
+                Err(_) => results.push((
+                    "unknown".to_string(),
+                    Err(XpmError::Other("sync worker thread panicked".to_string())),
+                )),
+            }
+        }
+    }
+
+    results
 }
 
 fn cmd_install(_config: &XpmConfig, args: &cli::InstallArgs, no_confirm: bool) -> Result<()> {

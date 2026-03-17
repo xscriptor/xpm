@@ -83,18 +83,18 @@ Next step: Phase 5 (repository database).
 
 ## Phase 5 · Repository Database <!-- phase:phase-5:repo-db -->
 
-- [ ] Implement alpm-repo-db parser (#22)
-  - [ ] Read desc and depends entries from repo .db tar archives
-  - [ ] Implement repo database types — RepoEntry, SyncDb, LocalDb structs
-- [ ] Implement alpm-repo-files support (#23)
-  - [ ] Parse file listings from .files archives
+- [x] Implement alpm-repo-db parser (#22)
+  - [x] Read desc and depends entries from repo .db tar archives
+  - [x] Implement repo database types — RepoEntry, SyncDb, LocalDb structs
+- [x] Implement alpm-repo-files support (#23)
+  - [x] Parse file listings from .files archives
 - [ ] Implement agnostic symlink handling (#24)
   - [ ] Implement local package database — track installed packages under /var/lib/xpm/local/
-- [ ] Implement remote database sync (#25)
-  - [ ] Implement HTTP download client — reqwest wrapper with progress, retries and parallel downloads
-  - [ ] Download and update .db files from configured mirrors
+- [/] Implement remote database sync (#25)
+  - [/] Implement HTTP download client — reqwest wrapper with progress, retries and parallel downloads
+  - [/] Download and update .db files from configured mirrors
 - [ ] Implement GitHub Pages repo backend — fetch packages from static hosting (#52)
-- [ ] Implement repo URL variable substitution — $repo, $arch placeholders (#53)
+- [/] Implement repo URL variable substitution — $repo, $arch placeholders (#53)
 - [ ] Write repository database test suite — parser tests with real Arch .db files (#56)
 
 ## Phase 6 · Security and Verification <!-- phase:phase-6:security -->

@@ -39,5 +39,8 @@ sha2 = "0.10"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 
+# Network
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls"] }
+
 # Internal crates
 xpm-core = { path = "crates/xpm-core" }

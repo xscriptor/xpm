@@ -7,6 +7,8 @@ pub mod config;
 pub mod error;
 pub mod package;
 pub mod repo;
+pub mod repo_db;
+pub mod repo_sync;
 pub mod resolver;
 
 // Re-export key types for convenience.
