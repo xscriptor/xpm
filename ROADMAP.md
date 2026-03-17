@@ -115,18 +115,20 @@ Next step: Phase 5 (repository database).
 
 ## Phase 7 · Transactions and System Management <!-- phase:phase-7:transactions -->
 
-- [ ] Implement transaction engine (#31)
-  - [ ] Plan, prepare and commit install/remove/upgrade operations
-- [ ] Implement pre/post transaction hooks (#32)
-  - [ ] Implement file extraction — install package files to filesystem with correct ownership
-  - [ ] Implement file removal — clean uninstall respecting shared files
+- [x] Implement transaction engine (#31)
+  - [x] Plan, prepare and commit install/remove/upgrade operations
+- [/] Implement pre/post transaction hooks (#32)
+  - [x] Hook trait and HookChain infrastructure
+  - [x] Local database registration (install/remove)
+  - [x] File removal hook (for clean uninstall)
+  - [ ] File extraction — install package files to filesystem with correct ownership
   - [ ] Execute scriptlets and alpm-hooks
 - [ ] Implement configuration file management (#33)
   - [ ] Handle .pacnew and .pacsave generation
-- [ ] Implement database lock mechanism (#34)
-  - [ ] Prevent concurrent xpm operations
-- [ ] Implement transaction logging (#35)
-  - [ ] Append operations to /var/log/xpm.log
+- [x] Implement database lock mechanism (#34)
+  - [x] Prevent concurrent xpm operations via FileLock
+- [x] Implement transaction logging (#35)
+  - [x] Append operations to /var/log/xpm.log
 - [ ] Write transaction test suite — install, remove, upgrade, conflict and rollback tests (#58)
 
 ## Phase 8 · Full Migration to Native Rust <!-- phase:phase-8:migration -->

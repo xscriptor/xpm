@@ -21,6 +21,7 @@ use xpm_core::repo_db::{merge_files_db, parse_sync_db};
 use xpm_core::repo_sync::{
     download_first_available, package_download_candidates, sync_repo_databases, verify_sha256,
 };
+use xpm_core::Transaction;
 use xpm_core::{XpmConfig, XpmError};
 
 fn main() -> Result<()> {
@@ -238,9 +239,17 @@ fn cmd_install(config: &XpmConfig, args: &cli::InstallArgs, no_confirm: bool) ->
         .unwrap_or_else(|| std::env::consts::ARCH.to_string());
     let sync_dir = config.options.db_path.join("sync");
     let cache_dir = &config.options.cache_dir;
+    let local_db_dir = config.options.db_path.join("local");
     std::fs::create_dir_all(cache_dir)
         .with_context(|| format!("failed to create cache dir {}", cache_dir.display()))?;
 
+    // Create transaction
+    let mut tx = Transaction::new(
+        config.options.root_dir.clone(),
+        local_db_dir,
+    ).context("failed to create transaction")?;
+
+    // Phase 1: Download and validate packages
     for pkg_name in &args.packages {
         let mut resolved = None;
 
@@ -288,6 +297,13 @@ fn cmd_install(config: &XpmConfig, args: &cli::InstallArgs, no_confirm: bool) ->
 
         println!("   downloaded: {}", dest.display());
         println!("   source: {}", mirror);
+
+        // Add to transaction
+        tx.add_install(
+            entry.name.clone(),
+            entry.version.clone(),
+            dest,
+        ).context("failed to add install to transaction")?;
     }
 
     if args.download_only {
@@ -297,8 +313,18 @@ fn cmd_install(config: &XpmConfig, args: &cli::InstallArgs, no_confirm: bool) ->
 
     if !no_confirm {
         println!(":: Proceed with installation? [Y/n] (download already completed)");
+        // TODO: Read user input if tty is present
     }
-    println!(":: Transaction engine is pending (Phase 7); files downloaded to cache only.");
+
+    // Phase 2: Prepare transaction (pre-flight checks)
+    println!(":: Preparing transaction ({} operation(s))...", tx.operation_count());
+    tx.prepare().context("transaction preparation failed")?;
+
+    // Phase 3: Commit transaction (write changes)
+    println!(":: Committing transaction...");
+    tx.commit().context("transaction commit failed")?;
+
+    println!(":: {} package(s) installed successfully.", args.packages.len());
     Ok(())
 }
 
