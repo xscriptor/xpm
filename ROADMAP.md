@@ -90,12 +90,17 @@ Next step: Phase 5 (repository database).
   - [x] Parse file listings from .files archives
 - [ ] Implement agnostic symlink handling (#24)
   - [ ] Implement local package database — track installed packages under /var/lib/xpm/local/
-- [/] Implement remote database sync (#25)
-  - [/] Implement HTTP download client — reqwest wrapper with progress, retries and parallel downloads
-  - [/] Download and update .db files from configured mirrors
-- [ ] Implement GitHub Pages repo backend — fetch packages from static hosting (#52)
-- [/] Implement repo URL variable substitution — $repo, $arch placeholders (#53)
-- [ ] Write repository database test suite — parser tests with real Arch .db files (#56)
+- [x] Implement remote database sync (#25)
+  - [x] Implement HTTP download client — reqwest wrapper with progress, retries and parallel downloads
+  - [x] Download and update .db files from configured mirrors
+- [x] Implement GitHub Pages repo backend — fetch packages from static hosting (#52)
+- [x] Implement repo URL variable substitution — $repo, $arch placeholders (#53)
+- [x] Write repository database test suite — parser tests with real Arch .db files (#56)
+  - [x] Unit tests for Arch-style .db parsing (no FILENAME/SHA256SUM/URL fields)
+  - [x] Unit tests for xpkg-extended .db format (with fetch metadata)
+  - [x] Integration tests using real x.db.tar.gz from x-repo repository
+  - [x] Tests for complex dependency structures and version formats
+  - [x] Tests for large repository databases (stress testing)
 
 ## Phase 6 · Security and Verification <!-- phase:phase-6:security -->
 

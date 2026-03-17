@@ -100,13 +100,13 @@ parallel_downloads = 5
 [[repo]]
 name = "core"
 server = [
-    "https://xscriptor.github.io/x-repo/$repo/os/$arch",
+    "https://xscriptordev.github.io/x-repo/$repo/os/$arch",
 ]
 
 [[repo]]
 name = "extra"
 server = [
-    "https://xscriptor.github.io/x-repo/$repo/os/$arch",
+    "https://xscriptordev.github.io/x-repo/$repo/os/$arch",
 ]
 ```
 
@@ -167,7 +167,7 @@ Packages use the ALPM `.pkg.tar.zst` format with Zstandard compression:
 
 ## Repository hosting
 
-The default package repository is hosted on **GitHub Pages** at `xscriptor.github.io/x-repo`. This will migrate to the `xscriptordev` organization for consistency as the project grows. `xpm` supports any HTTP-based static file server, making future migration to a VPS transparent.
+The default package repository is hosted on **GitHub Pages** at `xscriptordev.github.io/x-repo`. This will migrate to the `xscriptordev` organization for consistency as the project grows. `xpm` supports any HTTP-based static file server, making future migration to a VPS transparent.
 
 ## Roadmap
 

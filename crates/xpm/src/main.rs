@@ -18,7 +18,9 @@ use cli::{Cli, Command};
 use xpm_core::config::Repository;
 use xpm_core::repo::RepoManager;
 use xpm_core::repo_db::{merge_files_db, parse_sync_db};
-use xpm_core::repo_sync::sync_repo_databases;
+use xpm_core::repo_sync::{
+    download_first_available, package_download_candidates, sync_repo_databases, verify_sha256,
+};
 use xpm_core::{XpmConfig, XpmError};
 
 fn main() -> Result<()> {
@@ -223,18 +225,80 @@ fn sync_repositories_in_parallel(
     results
 }
 
-fn cmd_install(_config: &XpmConfig, args: &cli::InstallArgs, no_confirm: bool) -> Result<()> {
+fn cmd_install(config: &XpmConfig, args: &cli::InstallArgs, no_confirm: bool) -> Result<()> {
     println!(
         ":: Resolving dependencies for: {}",
         args.packages.join(", ")
     );
+
+    let arch = config
+        .options
+        .architecture
+        .clone()
+        .unwrap_or_else(|| std::env::consts::ARCH.to_string());
+    let sync_dir = config.options.db_path.join("sync");
+    let cache_dir = &config.options.cache_dir;
+    std::fs::create_dir_all(cache_dir)
+        .with_context(|| format!("failed to create cache dir {}", cache_dir.display()))?;
+
+    for pkg_name in &args.packages {
+        let mut resolved = None;
+
+        for repo in &config.repositories {
+            let db_path = sync_dir.join(format!("{}.db", repo.name));
+            if !db_path.exists() {
+                continue;
+            }
+
+            let db = parse_sync_db(&db_path, &repo.name).with_context(|| {
+                format!("failed to parse sync db {}", display_rel_or_abs(&db_path))
+            })?;
+
+            if let Some(entry) = db.entries.into_iter().find(|e| e.name == *pkg_name) {
+                resolved = Some((repo.clone(), entry));
+                break;
+            }
+        }
+
+        let Some((repo, entry)) = resolved else {
+            return Err(XpmError::PackageNotFound {
+                name: pkg_name.clone(),
+            }
+            .into());
+        };
+
+        let filename = entry.filename.clone().ok_or_else(|| {
+            XpmError::Database(format!(
+                "package '{}' in repo '{}' is missing FILENAME metadata",
+                entry.name, repo.name
+            ))
+        })?;
+        let dest = cache_dir.join(&filename);
+        let urls = package_download_candidates(&repo, &arch, &entry);
+        let mirror = download_first_available(&urls, &dest, 3).with_context(|| {
+            format!(
+                "failed to download '{}' from repo '{}'",
+                pkg_name, repo.name
+            )
+        })?;
+
+        if let Some(sum) = entry.sha256sum.as_deref() {
+            verify_sha256(&dest, sum)?;
+        }
+
+        println!("   downloaded: {}", dest.display());
+        println!("   source: {}", mirror);
+    }
+
     if args.download_only {
-        println!("   (download only mode)");
+        println!(":: Download complete.");
+        return Ok(());
     }
+
     if !no_confirm {
-        println!(":: Proceed with installation? [Y/n] (auto-confirmed in stub)");
+        println!(":: Proceed with installation? [Y/n] (download already completed)");
     }
-    println!(":: Installation complete (stub).");
+    println!(":: Transaction engine is pending (Phase 7); files downloaded to cache only.");
     Ok(())
 }
 

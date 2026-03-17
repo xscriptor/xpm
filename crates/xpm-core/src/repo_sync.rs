@@ -6,7 +6,9 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use crate::config::Repository;
+use crate::repo_db::RepoEntry;
 use crate::{XpmError, XpmResult};
+use sha2::{Digest, Sha256};
 
 /// Result metadata for a repository sync operation.
 #[derive(Debug, Clone)]
@@ -68,6 +70,82 @@ pub fn sync_repo_databases(
             repo.name
         ))
     }))
+}
+
+/// Build candidate package download URLs for a repository entry.
+///
+/// Resolution order:
+/// 1) `<expanded_server>/<filename>` for each configured repo server
+/// 2) If `%URL%` is a direct `.xp` URL, use it as-is
+/// 3) If `%URL%` points to a GitHub repo, derive release URL:
+///    `<url>/releases/download/<name>-<version>/<filename>`
+pub fn package_download_candidates(repo: &Repository, arch: &str, entry: &RepoEntry) -> Vec<String> {
+    let mut candidates = Vec::new();
+
+    let Some(filename) = entry.filename.as_deref() else {
+        return candidates;
+    };
+
+    for server in &repo.server {
+        let base = expand_repo_url(server, &repo.name, arch);
+        let base = base.trim_end_matches('/');
+        candidates.push(format!("{base}/{filename}"));
+    }
+
+    if let Some(url) = entry.url.as_deref() {
+        let clean = url.trim();
+        if clean.ends_with(".xp") {
+            candidates.push(clean.to_string());
+        } else if clean.starts_with("https://github.com/") {
+            let repo_url = clean.trim_end_matches('/');
+            let tag = format!("{}-{}", entry.name, entry.version);
+            candidates.push(format!(
+                "{repo_url}/releases/download/{tag}/{filename}"
+            ));
+        }
+    }
+
+    candidates
+}
+
+/// Download from the first working URL to `dest`.
+pub fn download_first_available(urls: &[String], dest: &Path, retries: u32) -> XpmResult<String> {
+    let mut last_error: Option<XpmError> = None;
+
+    for url in urls {
+        match download_with_retries(url, dest, retries) {
+            Ok(()) => return Ok(url.clone()),
+            Err(err) => last_error = Some(err),
+        }
+    }
+
+    Err(last_error.unwrap_or_else(|| {
+        XpmError::Database("no usable package URL found".to_string())
+    }))
+}
+
+/// Verify SHA-256 for a file if checksum metadata is available.
+pub fn verify_sha256(path: &Path, expected_hex: &str) -> XpmResult<()> {
+    let expected = expected_hex.trim();
+    if expected.is_empty() {
+        return Ok(());
+    }
+
+    let bytes = fs::read(path)?;
+    let mut hasher = Sha256::new();
+    hasher.update(&bytes);
+    let actual = format!("{:x}", hasher.finalize());
+
+    if actual.eq_ignore_ascii_case(expected) {
+        Ok(())
+    } else {
+        Err(XpmError::Package(format!(
+            "checksum mismatch for {}: expected {}, got {}",
+            path.display(),
+            expected,
+            actual
+        )))
+    }
 }
 
 fn download_with_retries(url: &str, dest: &Path, retries: u32) -> XpmResult<()> {
@@ -206,5 +284,30 @@ mod tests {
         assert!(result.files_downloaded);
         assert!(sync.join("core.db").exists());
         assert!(sync.join("core.files").exists());
+    }
+
+    #[test]
+    fn package_candidates_include_server_and_github_release() {
+        let repo = Repository {
+            name: "x".to_string(),
+            server: vec!["https://xscriptordev.github.io/x-repo/repo/$arch".to_string()],
+            sig_level: None,
+        };
+        let entry = RepoEntry {
+            name: "xfetch".to_string(),
+            version: "0.1.0-1".to_string(),
+            filename: Some("xfetch-0.1.0-1-x86_64.xp".to_string()),
+            sha256sum: None,
+            url: Some("https://github.com/xscriptordev/xfetch".to_string()),
+            ..Default::default()
+        };
+
+        let candidates = package_download_candidates(&repo, "x86_64", &entry);
+        assert!(candidates
+            .iter()
+            .any(|u| u == "https://xscriptordev.github.io/x-repo/repo/x86_64/xfetch-0.1.0-1-x86_64.xp"));
+        assert!(candidates
+            .iter()
+            .any(|u| u == "https://github.com/xscriptordev/xfetch/releases/download/xfetch-0.1.0-1/xfetch-0.1.0-1-x86_64.xp"));
     }
 }
