@@ -293,15 +293,63 @@ impl Hook for FileRemovalHook {
                 context.root_dir.join(file_path)
             };
 
-            if target.is_dir() {
-                let _ = fs::remove_dir(&target);
-            } else if target.exists() || target.symlink_metadata().is_ok() {
-                fs::remove_file(&target)?;
-            }
+            remove_tracked_path(&target)?;
+            prune_empty_ancestors(&target, context)?;
         }
 
         Ok(())
     }
+}
+
+fn remove_tracked_path(target: &Path) -> XpmResult<()> {
+    let metadata = match fs::symlink_metadata(target) {
+        Ok(m) => m,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(e) => return Err(e.into()),
+    };
+
+    let file_type = metadata.file_type();
+    if file_type.is_symlink() || file_type.is_file() {
+        fs::remove_file(target)?;
+    } else if file_type.is_dir() {
+        let _ = fs::remove_dir(target);
+    }
+
+    Ok(())
+}
+
+fn prune_empty_ancestors(target: &Path, context: &HookContext) -> XpmResult<()> {
+    if context.root_dir == Path::new("/") {
+        return Ok(());
+    }
+
+    if !target.starts_with(&context.root_dir) {
+        return Ok(());
+    }
+
+    let mut current = target.parent();
+    while let Some(dir) = current {
+        if dir == context.root_dir {
+            break;
+        }
+
+        match fs::remove_dir(dir) {
+            Ok(()) => {
+                current = dir.parent();
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                current = dir.parent();
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::DirectoryNotEmpty => {
+                break;
+            }
+            Err(_) => {
+                break;
+            }
+        }
+    }
+
+    Ok(())
 }
 
 fn fallback_remove_common_paths(context: &HookContext) -> XpmResult<()> {
@@ -479,6 +527,28 @@ mod tests {
         // Should not error even if no file list exists
         let result = hook.run(&ctx);
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn file_removal_hook_removes_files_and_prunes_empty_dirs() {
+        let (root, _db_tmp, ctx) = test_context(OperationType::Remove);
+        let hook = FileRemovalHook;
+
+        let installed = root.path().join("usr/bin/xfetch");
+        fs::create_dir_all(installed.parent().expect("parent dir")).expect("create parent dirs");
+        fs::write(&installed, "binary").expect("write binary file");
+
+        let pkg_dir = ctx.local_db_dir.join(&ctx.pkg_name);
+        fs::create_dir_all(&pkg_dir).expect("create package db dir");
+        fs::write(pkg_dir.join("files"), "usr/bin/xfetch\n").expect("write files manifest");
+
+        hook.run(&ctx).expect("run hook");
+
+        assert!(!installed.exists(), "installed file should be removed");
+        assert!(
+            !root.path().join("usr/bin").exists(),
+            "empty bin directory should be pruned"
+        );
     }
 
     #[test]

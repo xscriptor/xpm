@@ -256,7 +256,7 @@ fn confirm_action(prompt: &str, no_confirm: bool) -> Result<()> {
     }
 
     let answer = input.trim().to_ascii_lowercase();
-    if answer.is_empty() || answer == "y" || answer == "yes" {
+    if answer == "y" || answer == "yes" {
         Ok(())
     } else {
         Err(XpmError::Other("operation cancelled by user".to_string()).into())
@@ -354,7 +354,7 @@ fn cmd_install(config: &XpmConfig, args: &cli::InstallArgs, no_confirm: bool) ->
     }
 
     confirm_action(
-        ":: Proceed with installation? [Y/n] (download already completed) ",
+        ":: Proceed with installation? [y/N] (download already completed) ",
         no_confirm,
     )?;
 
@@ -409,7 +409,7 @@ fn cmd_remove(config: &XpmConfig, args: &cli::RemoveArgs, no_confirm: bool) -> R
             .context("failed to add remove to transaction")?;
     }
 
-    confirm_action(":: Proceed with removal? [Y/n] ", no_confirm)?;
+    confirm_action(":: Proceed with removal? [y/N] ", no_confirm)?;
 
     // Phase 2: Prepare transaction (pre-flight checks)
     println!(":: Preparing transaction ({} operation(s))...", tx.operation_count());
@@ -431,7 +431,7 @@ fn cmd_upgrade(_config: &XpmConfig, args: &cli::UpgradeArgs, no_confirm: bool) -
     if !args.ignore.is_empty() {
         println!("   ignoring: {}", args.ignore.join(", "));
     }
-    confirm_action(":: Proceed with upgrade? [Y/n] ", no_confirm)?;
+    confirm_action(":: Proceed with upgrade? [y/N] ", no_confirm)?;
     println!(":: Upgrade complete (stub).");
     Ok(())
 }
