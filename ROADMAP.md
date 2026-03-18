@@ -121,7 +121,7 @@ Next step: Phase 5 (repository database).
   - [x] Hook trait and HookChain infrastructure
   - [x] Local database registration (install/remove)
   - [x] File removal hook (for clean uninstall)
-  - [ ] File extraction — install package files to filesystem with correct ownership
+  - [x] File extraction — install package files to filesystem with correct ownership
   - [ ] Execute scriptlets and alpm-hooks
 - [ ] Implement configuration file management (#33)
   - [ ] Handle .pacnew and .pacsave generation
@@ -129,7 +129,11 @@ Next step: Phase 5 (repository database).
   - [x] Prevent concurrent xpm operations via FileLock
 - [x] Implement transaction logging (#35)
   - [x] Append operations to /var/log/xpm.log
-- [ ] Write transaction test suite — install, remove, upgrade, conflict and rollback tests (#58)
+- [/] Write transaction test suite — install, remove, upgrade, conflict and rollback tests (#58)
+  - [x] End-to-end install extraction test
+  - [x] End-to-end remove transaction test
+  - [ ] Upgrade end-to-end test
+  - [ ] Conflict resolution and rollback tests
 
 ## Phase 8 · Full Migration to Native Rust <!-- phase:phase-8:migration -->
 

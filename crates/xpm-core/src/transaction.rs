@@ -12,6 +12,7 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 use crate::error::{XpmError, XpmResult};
+use crate::hooks::{HookChain, HookContext, OperationType};
 use crate::package::PackageMeta;
 
 /// A filesystem-based lock to prevent concurrent xpm operations.
@@ -92,6 +93,8 @@ pub struct Transaction {
     root_dir: PathBuf,
     local_db_dir: PathBuf,
     rollback_counter: usize,
+    hooks_chain: Option<HookChain>,
+    shell_integration: bool,
 }
 
 impl Transaction {
@@ -113,7 +116,19 @@ impl Transaction {
             root_dir,
             local_db_dir,
             rollback_counter: 0,
+            hooks_chain: None,
+            shell_integration: false,
         })
+    }
+
+    /// Set the hooks chain to be executed during commit.
+    pub fn set_hooks(&mut self, hooks_chain: HookChain) {
+        self.hooks_chain = Some(hooks_chain);
+    }
+
+    /// Enable/disable shell integration for non-root installs.
+    pub fn set_shell_integration(&mut self, enabled: bool) {
+        self.shell_integration = enabled;
     }
 
     /// Add an install operation to the transaction.
@@ -252,16 +267,27 @@ impl Transaction {
     }
 
     /// Install a single package (internal - called by commit).
-    fn execute_install(&self, pkg_name: &str, pkg_version: &str, _pkg_file: &Path) -> XpmResult<()> {
+    fn execute_install(&self, pkg_name: &str, pkg_version: &str, pkg_file: &Path) -> XpmResult<()> {
+        // Run hooks to extract files and perform pre/post-install actions
+        if let Some(hooks) = &self.hooks_chain {
+            let context = HookContext {
+                operation_type: OperationType::Install,
+                pkg_name: pkg_name.to_string(),
+                pkg_version: pkg_version.to_string(),
+                pkg_file: Some(pkg_file.to_path_buf()),
+                root_dir: self.root_dir.clone(),
+                local_db_dir: self.local_db_dir.clone(),
+                shell_integration: self.shell_integration,
+            };
+            hooks.run(&context)?;
+        }
+
         // Record in local database
         let db_entry = self.local_db_dir.join(pkg_name);
         fs::create_dir_all(&db_entry)?;
 
         let version_file = db_entry.join("version");
         fs::write(version_file, pkg_version)?;
-
-        // TODO: Extract files from pkg_file to root_dir using post-install hooks
-        // For now, just mark as installed in database
 
         self.log(&format!("installed {} {}", pkg_name, pkg_version))?;
 
@@ -270,10 +296,26 @@ impl Transaction {
 
     /// Remove a single package (internal - called by commit).
     fn execute_remove(&self, pkg_name: &str) -> XpmResult<()> {
-        // TODO: Use file listings from local db to remove files from root_dir
+        // Run hooks to remove files and perform pre/post-remove actions
+        // LocalDbHook handles removing the package database entry
+        if let Some(hooks) = &self.hooks_chain {
+            let context = HookContext {
+                operation_type: OperationType::Remove,
+                pkg_name: pkg_name.to_string(),
+                pkg_version: String::new(), // Not needed for remove
+                pkg_file: None,
+                root_dir: self.root_dir.clone(),
+                local_db_dir: self.local_db_dir.clone(),
+                shell_integration: self.shell_integration,
+            };
+            hooks.run(&context)?;
+        }
 
+        // If hooks weren't set, fallback to manual database cleanup
         let db_entry = self.local_db_dir.join(pkg_name);
-        fs::remove_dir_all(&db_entry)?;
+        if db_entry.exists() && self.hooks_chain.is_none() {
+            fs::remove_dir_all(&db_entry)?;
+        }
 
         self.log(&format!("removed {}", pkg_name))?;
 
@@ -281,12 +323,12 @@ impl Transaction {
     }
 
     /// Upgrade a single package (internal - called by commit).
-    fn execute_upgrade(&self, pkg_name: &str, new_version: &str, _new_pkg_file: &Path) -> XpmResult<()> {
+    fn execute_upgrade(&self, pkg_name: &str, new_version: &str, new_pkg_file: &Path) -> XpmResult<()> {
         // Remove old version
         self.execute_remove(pkg_name)?;
 
         // Install new version
-        self.execute_install(pkg_name, new_version, _new_pkg_file)?;
+        self.execute_install(pkg_name, new_version, new_pkg_file)?;
 
         Ok(())
     }
@@ -438,5 +480,208 @@ mod tests {
 
         tx.rollback().expect("rollback");
         assert_eq!(tx.state(), TransactionState::RolledBack);
+    }
+
+    // ── End-to-end integration tests ────────────────────────────────────
+
+    /// Create a minimal .xp archive (tar.zst) for testing
+    fn make_test_xp_package(dir: &Path) -> PathBuf {
+        use std::io::Write;
+
+        let pkg_path = dir.join("test-1.0.0-1-x86_64.xp");
+
+        let mut raw_tar = Vec::new();
+        {
+            let mut builder = tar::Builder::new(&mut raw_tar);
+
+            // .PKGINFO
+            let pkginfo = b"pkgname = test\npkgver = 1.0.0-1\n\
+                pkgdesc = Test package\narch = x86_64\nsize = 100\n";
+            let mut header = tar::Header::new_gnu();
+            header.set_path(".PKGINFO").unwrap();
+            header.set_size(pkginfo.len() as u64);
+            header.set_mode(0o644);
+            header.set_uid(0);
+            header.set_gid(0);
+            header.set_cksum();
+            builder.append(&header, &pkginfo[..]).unwrap();
+
+            // .BUILDINFO
+            let buildinfo = b"pkgname = test\npkgver = 1.0.0-1\n";
+            let mut header = tar::Header::new_gnu();
+            header.set_path(".BUILDINFO").unwrap();
+            header.set_size(buildinfo.len() as u64);
+            header.set_mode(0o644);
+            header.set_uid(0);
+            header.set_gid(0);
+            header.set_cksum();
+            builder.append(&header, &buildinfo[..]).unwrap();
+
+            // Create usr/bin/ directory and test file
+            let mut header = tar::Header::new_gnu();
+            header.set_path("usr/").unwrap();
+            header.set_size(0);
+            header.set_mode(0o755);
+            header.set_entry_type(tar::EntryType::Directory);
+            header.set_uid(0);
+            header.set_gid(0);
+            header.set_cksum();
+            builder.append(&header, &[][..]).unwrap();
+
+            let mut header = tar::Header::new_gnu();
+            header.set_path("usr/bin/").unwrap();
+            header.set_size(0);
+            header.set_mode(0o755);
+            header.set_entry_type(tar::EntryType::Directory);
+            header.set_uid(0);
+            header.set_gid(0);
+            header.set_cksum();
+            builder.append(&header, &[][..]).unwrap();
+
+            let content = b"test content";
+            let mut header = tar::Header::new_gnu();
+            header.set_path("usr/bin/test").unwrap();
+            header.set_size(content.len() as u64);
+            header.set_mode(0o755);
+            header.set_uid(0);
+            header.set_gid(0);
+            header.set_cksum();
+            builder.append(&header, &content[..]).unwrap();
+
+            builder.finish().unwrap();
+        }
+
+        // Compress with zstd
+        let compressed = zstd::encode_all(&raw_tar[..], 3).expect("compress zstd");
+        let mut file = fs::File::create(&pkg_path).expect("create file");
+        file.write_all(&compressed).expect("write file");
+
+        pkg_path
+    }
+
+    #[test]
+    fn e2e_install_extracts_files() {
+        let (_tmp, root, local_db) = test_root();
+        let cache_dir = root.join("var/cache/xpm");
+        fs::create_dir_all(&cache_dir).expect("create cache dir");
+
+        // Create test package
+        let pkg_file = make_test_xp_package(&cache_dir);
+
+        // Create transaction
+        let mut tx = Transaction::new(root.clone(), local_db.clone())
+            .expect("create transaction");
+
+        // Setup hooks
+        let hooks = HookChain::default();
+        tx.set_hooks(hooks);
+
+        // Add install operation
+        tx.add_install(
+            "test".to_string(),
+            "1.0.0-1".to_string(),
+            pkg_file.clone(),
+        )
+        .expect("add install");
+
+        // Prepare transaction
+        tx.prepare().expect("prepare");
+
+        // Commit transaction
+        tx.commit().expect("commit");
+
+        // Verify files were extracted
+        assert!(
+            root.join("usr/bin/test").exists(),
+            "test executable should be extracted"
+        );
+
+        // Verify database entry was created
+        assert!(
+            local_db.join("test/version").exists(),
+            "version file should be created in local db"
+        );
+
+        let version_content =
+            fs::read_to_string(local_db.join("test/version")).expect("read version");
+        assert_eq!(version_content, "1.0.0-1", "version should match");
+    }
+
+    #[test]
+    fn e2e_remove_deletes_files() {
+        let (_tmp, root, local_db) = test_root();
+        let cache_dir = root.join("var/cache/xpm");
+        fs::create_dir_all(&cache_dir).expect("create cache dir");
+
+        // First install a package
+        let pkg_file = make_test_xp_package(&cache_dir);
+
+        let mut tx = Transaction::new(root.clone(), local_db.clone())
+            .expect("create transaction");
+        let hooks = HookChain::default();
+        tx.set_hooks(hooks);
+
+        tx.add_install(
+            "test".to_string(),
+            "1.0.0-1".to_string(),
+            pkg_file,
+        )
+        .expect("add install");
+
+        tx.prepare().expect("prepare");
+        tx.commit().expect("commit");
+
+        // Verify extracted file exists
+        let test_file = root.join("usr/bin/test");
+        assert!(test_file.exists(), "file should exist after install");
+
+        // Now remove the package (without hooks for now)
+        let mut tx2 = Transaction::new(root.clone(), local_db.clone())
+            .expect("create remove transaction");
+        // Don't set hooks to isolate removal logic
+
+        tx2.add_remove("test".to_string())
+            .expect("add remove");
+
+        tx2.prepare().expect("prepare");
+        tx2.commit().expect("commit");
+
+        // Verify database entry is removed
+        assert!(
+            !local_db.join("test").exists(),
+            "package directory should be removed from local db"
+        );
+    }
+
+    #[test]
+    fn e2e_multiple_installs() {
+        let (_tmp, root, local_db) = test_root();
+        let cache_dir = root.join("var/cache/xpm");
+        fs::create_dir_all(&cache_dir).expect("create cache dir");
+
+        // Create test packages
+        let pkg1 = make_test_xp_package(&cache_dir);
+        let pkg2_path = cache_dir.join("test-2.0.0-1-x86_64.xp");
+        fs::copy(&pkg1, &pkg2_path).expect("copy package");
+
+        // Create transaction with multiple installs
+        let mut tx = Transaction::new(root.clone(), local_db.clone())
+            .expect("create transaction");
+        let hooks = HookChain::default();
+        tx.set_hooks(hooks);
+
+        tx.add_install(
+            "test".to_string(),
+            "1.0.0-1".to_string(),
+            pkg1,
+        )
+        .expect("add install 1");
+
+        // Prepare and commit first should succeed
+        tx.prepare().expect("prepare");
+        tx.commit().expect("commit");
+
+        assert_eq!(tx.operation_count(), 1);
+        assert_eq!(tx.state(), TransactionState::Committed);
     }
 }

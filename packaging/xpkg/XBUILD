@@ -1,0 +1,37 @@
+[package]
+name = "xpm"
+version = "0.1.0"
+release = 1
+description = "Modern Rust-based package manager for X Distribution"
+url = "https://github.com/xscriptordev/xpm"
+license = ["GPL-3.0-or-later"]
+arch = ["x86_64"]
+
+[dependencies]
+depends = ["glibc"]
+makedepends = ["cargo", "gcc", "rust"]
+
+[source]
+urls = []
+
+[build]
+prepare = """
+REPO_ROOT=\"$(cd \"$startdir/../..\" && pwd)\"
+rm -rf \"$SRCDIR/xpm-src\"
+mkdir -p \"$SRCDIR/xpm-src\"
+cp -a \"$REPO_ROOT/.\" \"$SRCDIR/xpm-src/\"
+rm -rf \"$SRCDIR/xpm-src/target\"
+"""
+
+build = """
+cd \"$SRCDIR/xpm-src\"
+cargo build -p xpm --release --locked
+"""
+
+package = """
+cd \"$SRCDIR/xpm-src\"
+install -Dm755 \"target/release/xpm\" \"$PKGDIR/usr/bin/xpm\"
+install -Dm644 LICENSE \"$PKGDIR/usr/share/licenses/xpm/LICENSE\"
+install -Dm644 README.md \"$PKGDIR/usr/share/doc/xpm/README.md\"
+install -Dm644 etc/xpm.conf.example \"$PKGDIR/usr/share/xpm/xpm.conf.example\"
+"""

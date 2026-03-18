@@ -21,7 +21,7 @@ use xpm_core::repo_db::{merge_files_db, parse_sync_db};
 use xpm_core::repo_sync::{
     download_first_available, package_download_candidates, sync_repo_databases, verify_sha256,
 };
-use xpm_core::Transaction;
+use xpm_core::{HookChain, Transaction};
 use xpm_core::{XpmConfig, XpmError};
 
 fn main() -> Result<()> {
@@ -249,6 +249,11 @@ fn cmd_install(config: &XpmConfig, args: &cli::InstallArgs, no_confirm: bool) ->
         local_db_dir,
     ).context("failed to create transaction")?;
 
+    // Setup hooks chain
+    let hooks = HookChain::default();
+    tx.set_hooks(hooks);
+    tx.set_shell_integration(true);
+
     // Phase 1: Download and validate packages
     for pkg_name in &args.packages {
         let mut resolved = None;
@@ -325,15 +330,65 @@ fn cmd_install(config: &XpmConfig, args: &cli::InstallArgs, no_confirm: bool) ->
     tx.commit().context("transaction commit failed")?;
 
     println!(":: {} package(s) installed successfully.", args.packages.len());
+    if config.options.root_dir != PathBuf::from("/") {
+        println!(":: Shell integration enabled via ~/.local/bin shims.");
+        println!(":: If this shell does not find new commands yet, run: hash -r");
+        println!(":: For immediate PATH refresh, run: source ~/.zshrc or source ~/.bashrc");
+    }
     Ok(())
 }
 
-fn cmd_remove(_config: &XpmConfig, args: &cli::RemoveArgs, _no_confirm: bool) -> Result<()> {
+fn cmd_remove(config: &XpmConfig, args: &cli::RemoveArgs, no_confirm: bool) -> Result<()> {
     println!(":: Removing packages: {}", args.packages.join(", "));
     if args.recursive {
         println!("   (including unneeded dependencies)");
     }
-    println!(":: Removal complete (stub).");
+
+    // Create transaction
+    let local_db_dir = config.options.db_path.join("local");
+    let mut tx = Transaction::new(
+        config.options.root_dir.clone(),
+        local_db_dir.clone(),
+    ).context("failed to create transaction")?;
+
+    // Setup hooks chain
+    let hooks = HookChain::default();
+    tx.set_hooks(hooks);
+    tx.set_shell_integration(true);
+
+    // Add remove operations for each package
+    for pkg_name in &args.packages {
+        // Verify package is installed
+        let pkg_dir = local_db_dir.join(pkg_name);
+        if !pkg_dir.exists() {
+            return Err(XpmError::Package(format!(
+                "package '{}' is not installed",
+                pkg_name
+            ))
+            .into());
+        }
+
+        tx.add_remove(pkg_name.clone())
+            .context("failed to add remove to transaction")?;
+    }
+
+    if !no_confirm {
+        println!(":: Proceed with removal? [Y/n]");
+        // TODO: Read user input if tty is present
+    }
+
+    // Phase 2: Prepare transaction (pre-flight checks)
+    println!(":: Preparing transaction ({} operation(s))...", tx.operation_count());
+    tx.prepare().context("transaction preparation failed")?;
+
+    // Phase 3: Commit transaction (write changes)
+    println!(":: Committing transaction...");
+    tx.commit().context("transaction commit failed")?;
+
+    println!(":: {} package(s) removed successfully.", args.packages.len());
+    if config.options.root_dir != PathBuf::from("/") {
+        println!(":: If command lookup is stale in current shell, run: hash -r");
+    }
     Ok(())
 }
 
