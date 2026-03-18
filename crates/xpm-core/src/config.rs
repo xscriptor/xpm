@@ -107,18 +107,11 @@ impl Default for XpmConfig {
     fn default() -> Self {
         Self {
             options: GeneralOptions::default(),
-            repositories: vec![
-                Repository {
-                    name: "core".to_string(),
-                    server: vec!["https://mirror.rackspace.com/archlinux/$repo/os/$arch".into()],
-                    sig_level: None,
-                },
-                Repository {
-                    name: "extra".to_string(),
-                    server: vec!["https://mirror.rackspace.com/archlinux/$repo/os/$arch".into()],
-                    sig_level: None,
-                },
-            ],
+            repositories: vec![Repository {
+                name: "x".to_string(),
+                server: vec!["https://xscriptordev.github.io/x-repo/repo/$arch".into()],
+                sig_level: None,
+            }],
         }
     }
 }
@@ -223,8 +216,8 @@ mod tests {
         assert_eq!(config.options.root_dir, PathBuf::from("/"));
         assert_eq!(config.options.db_path, PathBuf::from("/var/lib/xpm/"));
         assert_eq!(config.options.parallel_downloads, 5);
-        assert_eq!(config.repositories.len(), 2);
-        assert_eq!(config.repositories[0].name, "core");
+        assert_eq!(config.repositories.len(), 1);
+        assert_eq!(config.repositories[0].name, "x");
     }
 
     #[test]

@@ -8,6 +8,7 @@ mod cli;
 use anyhow::{Context, Result};
 use clap::Parser;
 use std::collections::HashMap;
+use std::io::{self, Write};
 use std::path::Path;
 use std::path::PathBuf;
 use std::thread;
@@ -226,6 +227,27 @@ fn sync_repositories_in_parallel(
     results
 }
 
+fn confirm_action(prompt: &str, no_confirm: bool) -> Result<()> {
+    if no_confirm {
+        return Ok(());
+    }
+
+    print!("{}", prompt);
+    io::stdout().flush().context("failed to flush prompt")?;
+
+    let mut input = String::new();
+    io::stdin()
+        .read_line(&mut input)
+        .context("failed to read confirmation")?;
+
+    let answer = input.trim().to_ascii_lowercase();
+    if answer.is_empty() || answer == "y" || answer == "yes" {
+        Ok(())
+    } else {
+        Err(XpmError::Other("operation cancelled by user".to_string()).into())
+    }
+}
+
 fn cmd_install(config: &XpmConfig, args: &cli::InstallArgs, no_confirm: bool) -> Result<()> {
     println!(
         ":: Resolving dependencies for: {}",
@@ -316,10 +338,10 @@ fn cmd_install(config: &XpmConfig, args: &cli::InstallArgs, no_confirm: bool) ->
         return Ok(());
     }
 
-    if !no_confirm {
-        println!(":: Proceed with installation? [Y/n] (download already completed)");
-        // TODO: Read user input if tty is present
-    }
+    confirm_action(
+        ":: Proceed with installation? [Y/n] (download already completed) ",
+        no_confirm,
+    )?;
 
     // Phase 2: Prepare transaction (pre-flight checks)
     println!(":: Preparing transaction ({} operation(s))...", tx.operation_count());
@@ -372,10 +394,7 @@ fn cmd_remove(config: &XpmConfig, args: &cli::RemoveArgs, no_confirm: bool) -> R
             .context("failed to add remove to transaction")?;
     }
 
-    if !no_confirm {
-        println!(":: Proceed with removal? [Y/n]");
-        // TODO: Read user input if tty is present
-    }
+    confirm_action(":: Proceed with removal? [Y/n] ", no_confirm)?;
 
     // Phase 2: Prepare transaction (pre-flight checks)
     println!(":: Preparing transaction ({} operation(s))...", tx.operation_count());
@@ -392,11 +411,12 @@ fn cmd_remove(config: &XpmConfig, args: &cli::RemoveArgs, no_confirm: bool) -> R
     Ok(())
 }
 
-fn cmd_upgrade(_config: &XpmConfig, args: &cli::UpgradeArgs, _no_confirm: bool) -> Result<()> {
+fn cmd_upgrade(_config: &XpmConfig, args: &cli::UpgradeArgs, no_confirm: bool) -> Result<()> {
     println!(":: Starting full system upgrade...");
     if !args.ignore.is_empty() {
         println!("   ignoring: {}", args.ignore.join(", "));
     }
+    confirm_action(":: Proceed with upgrade? [Y/n] ", no_confirm)?;
     println!(":: Upgrade complete (stub).");
     Ok(())
 }

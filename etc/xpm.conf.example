@@ -63,15 +63,17 @@ check_space = true
 #   sig_level — override the global signature level for this repo
 
 [[repo]]
-name = "core"
+name = "x"
 server = [
-    "https://mirror.rackspace.com/archlinux/$repo/os/$arch",
-    "https://mirrors.kernel.org/archlinux/$repo/os/$arch",
+    "https://xscriptordev.github.io/x-repo/repo/$arch",
 ]
 
-[[repo]]
-name = "extra"
-server = [
-    "https://mirror.rackspace.com/archlinux/$repo/os/$arch",
-    "https://mirrors.kernel.org/archlinux/$repo/os/$arch",
-]
+# Optional additional repositories can be appended below.
+#
+# [[repo]]
+# name = "core"
+# server = ["https://mirror.rackspace.com/archlinux/$repo/os/$arch"]
+#
+# [[repo]]
+# name = "extra"
+# server = ["https://mirror.rackspace.com/archlinux/$repo/os/$arch"]

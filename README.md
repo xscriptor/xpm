@@ -98,17 +98,13 @@ sig_level = "optional"
 parallel_downloads = 5
 
 [[repo]]
-name = "core"
+name = "x"
 server = [
-    "https://xscriptordev.github.io/x-repo/$repo/os/$arch",
-]
-
-[[repo]]
-name = "extra"
-server = [
-    "https://xscriptordev.github.io/x-repo/$repo/os/$arch",
+    "https://xscriptordev.github.io/x-repo/repo/$arch",
 ]
 ```
+
+Optional additional repositories can be appended as extra `[[repo]]` blocks.
 
 ### Repository management
 
@@ -183,3 +179,38 @@ See [ROADMAP.md](ROADMAP.md) for the full development roadmap.
 ## License
 
 GPL-3.0-or-later. See [LICENSE](LICENSE).
+
+## Command Cheatsheet
+
+```bash
+# Sync repositories
+xpm sync
+
+# Install package(s)
+xpm install <pkg>
+xpm install <pkg1> <pkg2>
+
+# Install without prompt
+xpm install --no-confirm <pkg>
+
+# Remove package(s)
+xpm remove <pkg>
+
+# Upgrade all installed packages
+xpm upgrade
+
+# Search package
+xpm search <query>
+
+# Package info
+xpm info <pkg>
+
+# List files owned by a package
+xpm files <pkg>
+
+# Query local packages
+xpm query
+
+# Show configured repos
+xpm repo list
+```
