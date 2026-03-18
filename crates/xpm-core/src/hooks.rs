@@ -270,11 +270,17 @@ impl Hook for FileRemovalHook {
         let pkg_files_path = context.local_db_dir.join(&context.pkg_name).join("files");
 
         if !pkg_files_path.exists() {
-            // No file list; skip removal
+            // Fallback cleanup for older installs without a manifest.
+            fallback_remove_common_paths(context)?;
             return Ok(());
         }
 
         let file_list = fs::read_to_string(&pkg_files_path)?;
+        if file_list.trim().is_empty() {
+            // Fallback cleanup for older installs with empty manifest.
+            fallback_remove_common_paths(context)?;
+            return Ok(());
+        }
 
         for file_path in file_list.lines() {
             if file_path.is_empty() {
@@ -296,6 +302,44 @@ impl Hook for FileRemovalHook {
 
         Ok(())
     }
+}
+
+fn fallback_remove_common_paths(context: &HookContext) -> XpmResult<()> {
+    // Conservative fallback: remove the common binary path matching package name.
+    let bin_path = context.root_dir.join("usr/bin").join(&context.pkg_name);
+    if bin_path.exists() || bin_path.symlink_metadata().is_ok() {
+        let _ = fs::remove_file(&bin_path);
+    }
+
+    // Remove shims for both current user and original sudo user if available.
+    for home in candidate_homes() {
+        let shim = home.join(".local/bin").join(&context.pkg_name);
+        if shim.exists() || shim.symlink_metadata().is_ok() {
+            let _ = fs::remove_file(shim);
+        }
+    }
+
+    Ok(())
+}
+
+fn candidate_homes() -> Vec<PathBuf> {
+    let mut homes = Vec::new();
+
+    if let Some(h) = std::env::var_os("HOME") {
+        homes.push(PathBuf::from(h));
+    }
+
+    if let Some(sudo_user) = std::env::var_os("SUDO_USER") {
+        let sudo_user = sudo_user.to_string_lossy();
+        let sudo_home = PathBuf::from("/home").join(sudo_user.as_ref());
+        if sudo_home.exists() {
+            homes.push(sudo_home);
+        }
+    }
+
+    homes.sort();
+    homes.dedup();
+    homes
 }
 
 /// Load package metadata for inspection during hooks.

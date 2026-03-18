@@ -8,7 +8,7 @@ mod cli;
 use anyhow::{Context, Result};
 use clap::Parser;
 use std::collections::HashMap;
-use std::io::{self, Write};
+use std::io::{self, IsTerminal, Write};
 use std::path::Path;
 use std::path::PathBuf;
 use std::thread;
@@ -232,13 +232,28 @@ fn confirm_action(prompt: &str, no_confirm: bool) -> Result<()> {
         return Ok(());
     }
 
+    if !io::stdin().is_terminal() {
+        return Err(XpmError::Other(
+            "confirmation required but stdin is not interactive; use --no-confirm".to_string(),
+        )
+        .into());
+    }
+
     print!("{}", prompt);
     io::stdout().flush().context("failed to flush prompt")?;
 
     let mut input = String::new();
-    io::stdin()
+    let bytes = io::stdin()
         .read_line(&mut input)
         .context("failed to read confirmation")?;
+
+    if bytes == 0 {
+        return Err(XpmError::Other(
+            "confirmation prompt received EOF; use --no-confirm for non-interactive mode"
+                .to_string(),
+        )
+        .into());
+    }
 
     let answer = input.trim().to_ascii_lowercase();
     if answer.is_empty() || answer == "y" || answer == "yes" {
@@ -274,7 +289,7 @@ fn cmd_install(config: &XpmConfig, args: &cli::InstallArgs, no_confirm: bool) ->
     // Setup hooks chain
     let hooks = HookChain::default();
     tx.set_hooks(hooks);
-    tx.set_shell_integration(true);
+    tx.set_shell_integration(config.options.root_dir != PathBuf::from("/"));
 
     // Phase 1: Download and validate packages
     for pkg_name in &args.packages {
@@ -376,7 +391,7 @@ fn cmd_remove(config: &XpmConfig, args: &cli::RemoveArgs, no_confirm: bool) -> R
     // Setup hooks chain
     let hooks = HookChain::default();
     tx.set_hooks(hooks);
-    tx.set_shell_integration(true);
+    tx.set_shell_integration(config.options.root_dir != PathBuf::from("/"));
 
     // Add remove operations for each package
     for pkg_name in &args.packages {
