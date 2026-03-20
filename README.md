@@ -94,6 +94,7 @@ See [etc/xpm.conf.example](etc/xpm.conf.example) for all available options.
 root_dir = "/"
 db_path = "/var/lib/xpm/"
 cache_dir = "/var/cache/xpm/pkg/"
+gpg_dir = "/etc/xpm/gnupg/"
 sig_level = "optional"
 parallel_downloads = 5
 
@@ -105,6 +106,43 @@ server = [
 ```
 
 Optional additional repositories can be appended as extra `[[repo]]` blocks.
+
+### Signed repository bootstrap
+
+To enforce signature verification from the official repository, install the published
+trusted keyring and switch the repository to `required` mode:
+
+```bash
+# System-wide keyring directory used by xpm (must match gpg_dir in config)
+sudo install -d -m 755 /etc/xpm/gnupg
+
+# Download repository public keyring
+sudo curl -fsSL \
+    https://xscriptordev.github.io/x-repo/repo/x86_64/trustedkeys.gpg \
+    -o /etc/xpm/gnupg/trustedkeys.gpg
+
+# Optional: keep the ASCII-armored public key for auditing
+sudo curl -fsSL \
+    https://xscriptordev.github.io/x-repo/repo/x86_64/signing.pub \
+    -o /etc/xpm/gnupg/signing.pub
+```
+
+Then set:
+
+```toml
+[options]
+gpg_dir = "/etc/xpm/gnupg/"
+sig_level = "required"
+```
+
+You can also override per repository:
+
+```toml
+[[repo]]
+name = "x"
+server = ["https://xscriptordev.github.io/x-repo/repo/$arch"]
+sig_level = "required"
+```
 
 ### Repository management
 

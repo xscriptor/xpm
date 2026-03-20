@@ -20,7 +20,8 @@ use xpm_core::config::Repository;
 use xpm_core::repo::RepoManager;
 use xpm_core::repo_db::{merge_files_db, parse_sync_db};
 use xpm_core::repo_sync::{
-    download_first_available, package_download_candidates, sync_repo_databases, verify_sha256,
+    download_first_available, package_download_candidates, sync_repo_databases,
+    verify_remote_signature, verify_sha256,
 };
 use xpm_core::{HookChain, Transaction};
 use xpm_core::{XpmConfig, XpmError};
@@ -108,6 +109,8 @@ fn cmd_sync(config: &XpmConfig, args: &cli::SyncArgs) -> Result<()> {
         &sync_dir,
         3,
         config.options.parallel_downloads.max(1) as usize,
+        config.options.sig_level,
+        config.options.gpg_dir.join("trustedkeys.gpg"),
     );
     let mut remote_by_repo: HashMap<String, Result<xpm_core::repo_sync::RepoSyncResult, XpmError>> =
         remote_results.into_iter().collect();
@@ -191,6 +194,8 @@ fn sync_repositories_in_parallel(
     sync_dir: &Path,
     retries: u32,
     max_parallel: usize,
+    default_sig_level: xpm_core::config::SigLevel,
+    keyring_path: PathBuf,
 ) -> Vec<(
     String,
     Result<xpm_core::repo_sync::RepoSyncResult, XpmError>,
@@ -204,11 +209,18 @@ fn sync_repositories_in_parallel(
             let repo_clone = repo.clone();
             let arch_owned = arch.to_string();
             let sync_dir_owned = sync_dir.to_path_buf();
+            let keyring_path_owned = keyring_path.clone();
 
             handles.push(thread::spawn(move || {
                 let name = repo_clone.name.clone();
-                let result =
-                    sync_repo_databases(&repo_clone, &arch_owned, &sync_dir_owned, retries);
+                let result = sync_repo_databases(
+                    &repo_clone,
+                    &arch_owned,
+                    &sync_dir_owned,
+                    retries,
+                    default_sig_level,
+                    &keyring_path_owned,
+                );
                 (name, result)
             }));
         }
@@ -329,6 +341,16 @@ fn cmd_install(config: &XpmConfig, args: &cli::InstallArgs, no_confirm: bool) ->
         let mirror = download_first_available(&urls, &dest, 3).with_context(|| {
             format!(
                 "failed to download '{}' from repo '{}'",
+                pkg_name, repo.name
+            )
+        })?;
+
+        let sig_level = repo.sig_level.unwrap_or(config.options.sig_level);
+        let keyring_path = config.options.gpg_dir.join("trustedkeys.gpg");
+        let sig_url = format!("{mirror}.sig");
+        verify_remote_signature(&dest, &sig_url, sig_level, &keyring_path, 3).with_context(|| {
+            format!(
+                "signature verification failed for '{}' from repo '{}'",
                 pkg_name, repo.name
             )
         })?;

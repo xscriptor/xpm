@@ -11,6 +11,7 @@ pub mod repo;
 pub mod repo_db;
 pub mod repo_sync;
 pub mod resolver;
+pub mod signing;
 pub mod transaction;
 
 // Re-export key types for convenience.
