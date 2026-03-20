@@ -18,6 +18,34 @@
 
 ## Installation
 
+### Quick install (published package)
+
+Install the latest published `xpm` build directly from the official repository:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/xscriptordev/xpm/main/install.sh | bash
+```
+
+If `curl` is not available:
+
+```bash
+wget -qO- https://raw.githubusercontent.com/xscriptordev/xpm/main/install.sh | bash
+```
+
+Optional environment variables for the installer:
+
+- `XPM_PKG_URL`: override the package URL (for testing another build)
+- `INSTALL_PREFIX`: change install prefix (default: `/usr/local`)
+
+Example:
+
+```bash
+INSTALL_PREFIX=/usr XPM_PKG_URL="https://xscriptordev.github.io/x-repo/repo/x86_64/xpm-0.1.0-3-x86_64.xp" \
+curl -fsSL https://raw.githubusercontent.com/xscriptordev/xpm/main/install.sh | bash
+```
+
+### Build from source
+
 ```bash
 git clone https://github.com/xscriptordev/xpm.git
 cd xpm
