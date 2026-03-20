@@ -159,14 +159,14 @@ Next step: Phase 5 (repository database).
 
 ## Phase 10 · Security Execution Track <!-- phase:phase-10:security-execution -->
 
-- [x] Add detached signature verification for sync databases and packages
+- [x] Add detached signature verification for sync databases and packages (#61)
   - [x] Download and validate `.db.sig` during `xpm sync`
   - [x] Download and validate package `.sig` during `xpm install`
   - [x] Enforce required/optional/never behavior from `sig_level`
-- [x] Add keyring loading and trust source selection
+- [x] Add keyring loading and trust source selection (#62)
   - [x] Load trusted OpenPGP certs from configured keyring path(s)
   - [x] Surface clear errors when keyring is missing in `required` mode
-- [x] Add security-focused tests for signature enforcement
+- [x] Add security-focused tests for signature enforcement (#63)
   - [x] Sync fails on invalid signature when `sig_level = required`
   - [x] Install fails on invalid signature when `sig_level = required`
   - [x] Optional mode allows unsigned artifacts with warnings
