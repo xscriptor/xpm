@@ -7,6 +7,7 @@
 use std::fs;
 use std::io::Read;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use flate2::read::GzDecoder;
 use tar;
@@ -154,8 +155,109 @@ impl Hook for FileExtractionHook {
             fs::write(files_path, installed_files.join("\n"))?;
         }
 
+        // Persist .INSTALL scriptlet in local db for future lifecycle hooks.
+        if let Some(raw_install) = crate::package::reader::read_raw_entry(pkg_file, ".INSTALL")? {
+            let pkg_dir = context.local_db_dir.join(&context.pkg_name);
+            fs::create_dir_all(&pkg_dir)?;
+            fs::write(pkg_dir.join("install"), raw_install)?;
+        }
+
         Ok(())
     }
+}
+
+/// Execute native package scriptlets from `.INSTALL` files.
+pub struct ScriptletHook;
+
+impl Hook for ScriptletHook {
+    fn name(&self) -> &str {
+        "scriptlet"
+    }
+
+    fn run(&self, context: &HookContext) -> XpmResult<()> {
+        let Some(script_data) = load_install_script(context)? else {
+            return Ok(());
+        };
+
+        let functions: &[&str] = match context.operation_type {
+            OperationType::Install => &["post_install"],
+            OperationType::Upgrade => &["post_upgrade", "post_install"],
+            OperationType::Remove => &[],
+        };
+
+        if functions.is_empty() {
+            return Ok(());
+        }
+
+        run_scriptlet_functions(context, &script_data, functions)
+    }
+}
+
+fn load_install_script(context: &HookContext) -> XpmResult<Option<Vec<u8>>> {
+    if let Some(pkg_file) = &context.pkg_file {
+        if let Some(data) = crate::package::reader::read_raw_entry(pkg_file, ".INSTALL")? {
+            return Ok(Some(data));
+        }
+    }
+
+    let local_install = context.local_db_dir.join(&context.pkg_name).join("install");
+    if local_install.exists() {
+        return Ok(Some(fs::read(local_install)?));
+    }
+
+    Ok(None)
+}
+
+fn run_scriptlet_functions(
+    context: &HookContext,
+    script_data: &[u8],
+    functions: &[&str],
+) -> XpmResult<()> {
+    let tmp_script = context
+        .local_db_dir
+        .join(format!(".{}.install.tmp", context.pkg_name));
+    fs::write(&tmp_script, script_data)?;
+
+    let shell = r#"set -euo pipefail
+script_path="$1"
+shift
+source "$script_path"
+for fn in "$@"; do
+  if declare -F "$fn" >/dev/null 2>&1; then
+    "$fn"
+  fi
+done
+"#;
+
+    let status = Command::new("bash")
+        .arg("-c")
+        .arg(shell)
+        .arg("xpm-scriptlet")
+        .arg(&tmp_script)
+        .args(functions)
+        .current_dir(&context.root_dir)
+        .env("XPM_ROOT_DIR", &context.root_dir)
+        .env("XPM_PKG_NAME", &context.pkg_name)
+        .env("XPM_PKG_VERSION", &context.pkg_version)
+        .status();
+
+    let _ = fs::remove_file(&tmp_script);
+
+    let status = status.map_err(|e| {
+        XpmError::Package(format!(
+            "failed to execute .INSTALL script for '{}': {}",
+            context.pkg_name, e
+        ))
+    })?;
+
+    if !status.success() {
+        return Err(XpmError::Package(format!(
+            ".INSTALL script failed for '{}' with status {}",
+            context.pkg_name, status
+        )));
+    }
+
+    Ok(())
 }
 
 fn ensure_shell_shim(relative_path: &str, target: &Path) -> XpmResult<Option<PathBuf>> {
@@ -454,6 +556,7 @@ impl Default for HookChain {
         // Add default hooks in order
         chain.add_hook(Box::new(MetadataLoadHook));
         chain.add_hook(Box::new(FileExtractionHook));
+        chain.add_hook(Box::new(ScriptletHook));
         chain.add_hook(Box::new(FileRemovalHook));
         chain.add_hook(Box::new(LocalDbHook));
         chain
@@ -486,7 +589,28 @@ mod tests {
     fn hook_chain_default_has_hooks() {
         let chain = HookChain::default();
         assert!(!chain.hooks().is_empty());
-        assert_eq!(chain.hooks().len(), 4); // metadata, extraction, removal, localdb
+        assert_eq!(chain.hooks().len(), 5); // metadata, extraction, scriptlet, removal, localdb
+    }
+
+    #[test]
+    fn scriptlet_hook_runs_post_install() {
+        let (root, db_tmp, mut ctx) = test_context(OperationType::Install);
+        let hook = ScriptletHook;
+        ctx.pkg_file = None;
+
+        let pkg_dir = db_tmp.path().join(&ctx.pkg_name);
+        fs::create_dir_all(&pkg_dir).expect("create pkg dir");
+        fs::write(
+            pkg_dir.join("install"),
+            "post_install() { touch \"$XPM_ROOT_DIR/scriptlet-ok\"; }\n",
+        )
+        .expect("write install script");
+
+        hook.run(&ctx).expect("run scriptlet hook");
+        assert!(
+            root.path().join("scriptlet-ok").exists(),
+            "post_install should create marker file"
+        );
     }
 
     #[test]
