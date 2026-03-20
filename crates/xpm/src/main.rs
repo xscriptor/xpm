@@ -19,6 +19,7 @@ use cli::{Cli, Command};
 use xpm_core::config::Repository;
 use xpm_core::repo::RepoManager;
 use xpm_core::repo_db::{merge_files_db, parse_sync_db};
+use xpm_core::resolver::Version;
 use xpm_core::repo_sync::{
     download_first_available, package_download_candidates, sync_repo_databases,
     verify_remote_signature, verify_sha256,
@@ -448,14 +449,193 @@ fn cmd_remove(config: &XpmConfig, args: &cli::RemoveArgs, no_confirm: bool) -> R
     Ok(())
 }
 
-fn cmd_upgrade(_config: &XpmConfig, args: &cli::UpgradeArgs, no_confirm: bool) -> Result<()> {
+fn cmd_upgrade(config: &XpmConfig, args: &cli::UpgradeArgs, no_confirm: bool) -> Result<()> {
     println!(":: Starting full system upgrade...");
     if !args.ignore.is_empty() {
         println!("   ignoring: {}", args.ignore.join(", "));
     }
+
+    // Always refresh sync databases first (equivalent to pacman -Syu behavior).
+    cmd_sync(config, &cli::SyncArgs { force: false })?;
+
+    let local_db_dir = config.options.db_path.join("local");
+    let sync_dir = config.options.db_path.join("sync");
+    let cache_dir = &config.options.cache_dir;
+    let arch = config
+        .options
+        .architecture
+        .clone()
+        .unwrap_or_else(|| std::env::consts::ARCH.to_string());
+
+    std::fs::create_dir_all(cache_dir)
+        .with_context(|| format!("failed to create cache dir {}", cache_dir.display()))?;
+
+    let installed = read_installed_versions(&local_db_dir)?;
+    if installed.is_empty() {
+        println!(":: No packages are currently installed in xpm local database.");
+        return Ok(());
+    }
+
+    let remote_latest = read_latest_remote_entries(config, &sync_dir)?;
+
+    let mut planned = Vec::new();
+    for (pkg_name, local_version) in installed {
+        if args.ignore.iter().any(|i| i == &pkg_name) {
+            continue;
+        }
+
+        let Some((repo, entry)) = remote_latest.get(&pkg_name) else {
+            continue;
+        };
+
+        let ordering = Version::cmp_versions(&entry.version, &local_version);
+        if ordering.is_gt() || (args.force && ordering.is_eq()) {
+            planned.push((
+                repo.clone(),
+                entry.clone(),
+                local_version,
+            ));
+        }
+    }
+
+    if planned.is_empty() {
+        println!(":: Nothing to do. System is up to date.");
+        return Ok(());
+    }
+
+    println!(":: Packages to upgrade: {}", planned.len());
+    for (_, entry, local_version) in &planned {
+        println!("   {} {} -> {}", entry.name, local_version, entry.version);
+    }
+
     confirm_action(":: Proceed with upgrade? [y/N] ", no_confirm)?;
-    println!(":: Upgrade complete (stub).");
+
+    let mut tx = Transaction::new(config.options.root_dir.clone(), local_db_dir)
+        .context("failed to create transaction")?;
+    let hooks = HookChain::default();
+    tx.set_hooks(hooks);
+    tx.set_shell_integration(config.options.root_dir != PathBuf::from("/"));
+
+    for (repo, entry, _) in planned {
+        let filename = entry.filename.clone().ok_or_else(|| {
+            XpmError::Database(format!(
+                "package '{}' in repo '{}' is missing FILENAME metadata",
+                entry.name, repo.name
+            ))
+        })?;
+
+        let dest = cache_dir.join(&filename);
+        let urls = package_download_candidates(&repo, &arch, &entry);
+        let mirror = download_first_available(&urls, &dest, 3).with_context(|| {
+            format!(
+                "failed to download '{}' from repo '{}'",
+                entry.name, repo.name
+            )
+        })?;
+
+        let sig_level = repo.sig_level.unwrap_or(config.options.sig_level);
+        let keyring_path = config.options.gpg_dir.join("trustedkeys.gpg");
+        let sig_url = format!("{mirror}.sig");
+        verify_remote_signature(&dest, &sig_url, sig_level, &keyring_path, 3).with_context(|| {
+            format!(
+                "signature verification failed for '{}' from repo '{}'",
+                entry.name, repo.name
+            )
+        })?;
+
+        if let Some(sum) = entry.sha256sum.as_deref() {
+            verify_sha256(&dest, sum)?;
+        }
+
+        tx.add_remove(entry.name.clone())
+            .context("failed to add remove op to transaction")?;
+        tx.add_install(entry.name.clone(), entry.version.clone(), dest)
+            .context("failed to add install op to transaction")?;
+    }
+
+    println!(":: Preparing transaction ({} operation(s))...", tx.operation_count());
+    tx.prepare().context("transaction preparation failed")?;
+
+    println!(":: Committing transaction...");
+    tx.commit().context("transaction commit failed")?;
+
+    println!(":: Upgrade complete.");
     Ok(())
+}
+
+fn read_installed_versions(local_db_dir: &Path) -> Result<HashMap<String, String>> {
+    let mut installed = HashMap::new();
+
+    if !local_db_dir.exists() {
+        return Ok(installed);
+    }
+
+    for entry in std::fs::read_dir(local_db_dir)
+        .with_context(|| format!("failed to read {}", local_db_dir.display()))?
+    {
+        let entry = entry?;
+        let file_type = entry.file_type()?;
+        if !file_type.is_dir() {
+            continue;
+        }
+
+        let pkg_name = entry.file_name().to_string_lossy().into_owned();
+        let version_path = entry.path().join("version");
+        if !version_path.exists() {
+            continue;
+        }
+
+        let version = std::fs::read_to_string(&version_path)
+            .with_context(|| format!("failed to read {}", version_path.display()))?
+            .trim()
+            .to_string();
+
+        if !version.is_empty() {
+            installed.insert(pkg_name, version);
+        }
+    }
+
+    Ok(installed)
+}
+
+fn read_latest_remote_entries(
+    config: &XpmConfig,
+    sync_dir: &Path,
+) -> Result<HashMap<String, (Repository, xpm_core::repo_db::RepoEntry)>> {
+    let mut latest = HashMap::new();
+
+    for repo in &config.repositories {
+        let db_path = sync_dir.join(format!("{}.db", repo.name));
+        if !db_path.exists() {
+            continue;
+        }
+
+        let db = parse_sync_db(&db_path, &repo.name)
+            .with_context(|| format!("failed to parse sync db {}", db_path.display()))?;
+
+        // Preserve repository priority order: first repo that contains a package wins.
+        let mut best_by_name: HashMap<String, xpm_core::repo_db::RepoEntry> = HashMap::new();
+        for entry in db.entries {
+            match best_by_name.get(&entry.name) {
+                Some(existing) => {
+                    if Version::cmp_versions(&entry.version, &existing.version).is_gt() {
+                        best_by_name.insert(entry.name.clone(), entry);
+                    }
+                }
+                None => {
+                    best_by_name.insert(entry.name.clone(), entry);
+                }
+            }
+        }
+
+        for (name, entry) in best_by_name {
+            latest
+                .entry(name)
+                .or_insert_with(|| (repo.clone(), entry));
+        }
+    }
+
+    Ok(latest)
 }
 
 fn cmd_query(_config: &XpmConfig, args: &cli::QueryArgs) -> Result<()> {
