@@ -65,7 +65,7 @@ check_space = true
 [[repo]]
 name = "x"
 server = [
-    "https://xscriptordev.github.io/x-repo/repo/$arch",
+    "https://xscriptor.github.io/x-repo/repo/$arch",
 ]
 
 # Optional additional repositories can be appended below.

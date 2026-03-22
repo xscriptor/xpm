@@ -109,7 +109,7 @@ impl Default for XpmConfig {
             options: GeneralOptions::default(),
             repositories: vec![Repository {
                 name: "x".to_string(),
-                server: vec!["https://xscriptordev.github.io/x-repo/repo/$arch".into()],
+                server: vec!["https://xscriptor.github.io/x-repo/repo/$arch".into()],
                 sig_level: None,
             }],
         }

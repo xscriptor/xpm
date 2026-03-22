@@ -532,7 +532,7 @@ mod tests {
     fn package_candidates_include_server_and_github_release() {
         let repo = Repository {
             name: "x".to_string(),
-            server: vec!["https://xscriptordev.github.io/x-repo/repo/$arch".to_string()],
+            server: vec!["https://xscriptor.github.io/x-repo/repo/$arch".to_string()],
             sig_level: None,
         };
         let entry = RepoEntry {
@@ -540,16 +540,16 @@ mod tests {
             version: "0.1.0-1".to_string(),
             filename: Some("xfetch-0.1.0-1-x86_64.xp".to_string()),
             sha256sum: None,
-            url: Some("https://github.com/xscriptordev/xfetch".to_string()),
+            url: Some("https://github.com/xscriptor/xfetch".to_string()),
             ..Default::default()
         };
 
         let candidates = package_download_candidates(&repo, "x86_64", &entry);
         assert!(candidates
             .iter()
-            .any(|u| u == "https://xscriptordev.github.io/x-repo/repo/x86_64/xfetch-0.1.0-1-x86_64.xp"));
+            .any(|u| u == "https://xscriptor.github.io/x-repo/repo/x86_64/xfetch-0.1.0-1-x86_64.xp"));
         assert!(candidates
             .iter()
-            .any(|u| u == "https://github.com/xscriptordev/xfetch/releases/download/xfetch-0.1.0-1/xfetch-0.1.0-1-x86_64.xp"));
+            .any(|u| u == "https://github.com/xscriptor/xfetch/releases/download/xfetch-0.1.0-1/xfetch-0.1.0-1-x86_64.xp"));
     }
 }
