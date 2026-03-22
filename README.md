@@ -23,13 +23,13 @@
 Install the latest published `xpm` build directly from the official repository:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/xscriptordev/xpm/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/xscriptor/xpm/main/install.sh | bash
 ```
 
 If `curl` is not available:
 
 ```bash
-wget -qO- https://raw.githubusercontent.com/xscriptordev/xpm/main/install.sh | bash
+wget -qO- https://raw.githubusercontent.com/xscriptor/xpm/main/install.sh | bash
 ```
 
 Optional environment variables for the installer:
@@ -40,14 +40,14 @@ Optional environment variables for the installer:
 Example:
 
 ```bash
-INSTALL_PREFIX=/usr XPM_PKG_URL="https://xscriptordev.github.io/x-repo/repo/x86_64/xpm-0.1.0-3-x86_64.xp" \
-curl -fsSL https://raw.githubusercontent.com/xscriptordev/xpm/main/install.sh | bash
+INSTALL_PREFIX=/usr XPM_PKG_URL="https://xscriptor.github.io/x-repo/repo/x86_64/xpm-0.1.0-3-x86_64.xp" \
+curl -fsSL https://raw.githubusercontent.com/xscriptor/xpm/main/install.sh | bash
 ```
 
 ### Build from source
 
 ```bash
-git clone https://github.com/xscriptordev/xpm.git
+git clone https://github.com/xscriptor/xpm.git
 cd xpm
 cargo build --release
 sudo cp target/release/xpm /usr/local/bin/
@@ -129,7 +129,7 @@ parallel_downloads = 5
 [[repo]]
 name = "x"
 server = [
-    "https://xscriptordev.github.io/x-repo/repo/$arch",
+    "https://xscriptor.github.io/x-repo/repo/$arch",
 ]
 ```
 
@@ -146,12 +146,12 @@ sudo install -d -m 755 /etc/xpm/gnupg
 
 # Download repository public keyring
 sudo curl -fsSL \
-    https://xscriptordev.github.io/x-repo/repo/x86_64/trustedkeys.gpg \
+    https://xscriptor.github.io/x-repo/repo/x86_64/trustedkeys.gpg \
     -o /etc/xpm/gnupg/trustedkeys.gpg
 
 # Optional: keep the ASCII-armored public key for auditing
 sudo curl -fsSL \
-    https://xscriptordev.github.io/x-repo/repo/x86_64/signing.pub \
+    https://xscriptor.github.io/x-repo/repo/x86_64/signing.pub \
     -o /etc/xpm/gnupg/signing.pub
 ```
 
@@ -168,7 +168,7 @@ You can also override per repository:
 ```toml
 [[repo]]
 name = "x"
-server = ["https://xscriptordev.github.io/x-repo/repo/$arch"]
+server = ["https://xscriptor.github.io/x-repo/repo/$arch"]
 sig_level = "required"
 ```
 
@@ -229,7 +229,7 @@ Packages use the ALPM `.pkg.tar.zst` format with Zstandard compression:
 
 ## Repository hosting
 
-The default package repository is hosted on **GitHub Pages** at `xscriptordev.github.io/x-repo`. This will migrate to the `xscriptordev` organization for consistency as the project grows. `xpm` supports any HTTP-based static file server, making future migration to a VPS transparent.
+The default package repository is hosted on **GitHub Pages** at `xscriptor.github.io/x-repo`. This will migrate to the `xscriptor` organization for consistency as the project grows. `xpm` supports any HTTP-based static file server, making future migration to a VPS transparent.
 
 ## Roadmap
 
