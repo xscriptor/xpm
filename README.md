@@ -40,7 +40,7 @@ Optional environment variables for the installer:
 Example:
 
 ```bash
-INSTALL_PREFIX=/usr XPM_PKG_URL="https://xscriptor.github.io/x-repo/repo/x86_64/xpm-0.1.0-3-x86_64.xp" \
+INSTALL_PREFIX=/usr XPM_PKG_URL="https://xscriptor.github.io/x-repo/x/x86_64/xpm-0.1.0-3-x86_64.xp" \
 curl -fsSL https://raw.githubusercontent.com/xscriptor/xpm/main/install.sh | bash
 ```
 
@@ -129,7 +129,7 @@ parallel_downloads = 5
 [[repo]]
 name = "x"
 server = [
-    "https://xscriptor.github.io/x-repo/repo/$arch",
+    "https://xscriptor.github.io/x-repo/x/$arch",
 ]
 ```
 
@@ -146,12 +146,12 @@ sudo install -d -m 755 /etc/xpm/gnupg
 
 # Download repository public keyring
 sudo curl -fsSL \
-    https://xscriptor.github.io/x-repo/repo/x86_64/trustedkeys.gpg \
+    https://xscriptor.github.io/x-repo/x/x86_64/trustedkeys.gpg \
     -o /etc/xpm/gnupg/trustedkeys.gpg
 
 # Optional: keep the ASCII-armored public key for auditing
 sudo curl -fsSL \
-    https://xscriptor.github.io/x-repo/repo/x86_64/signing.pub \
+    https://xscriptor.github.io/x-repo/x/x86_64/signing.pub \
     -o /etc/xpm/gnupg/signing.pub
 ```
 
@@ -168,7 +168,7 @@ You can also override per repository:
 ```toml
 [[repo]]
 name = "x"
-server = ["https://xscriptor.github.io/x-repo/repo/$arch"]
+server = ["https://xscriptor.github.io/x-repo/x/$arch"]
 sig_level = "required"
 ```
 

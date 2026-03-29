@@ -532,7 +532,7 @@ mod tests {
     fn package_candidates_include_server_and_github_release() {
         let repo = Repository {
             name: "x".to_string(),
-            server: vec!["https://xscriptor.github.io/x-repo/repo/$arch".to_string()],
+            server: vec!["https://xscriptor.github.io/x-repo/x/$arch".to_string()],
             sig_level: None,
         };
         let entry = RepoEntry {
@@ -547,7 +547,7 @@ mod tests {
         let candidates = package_download_candidates(&repo, "x86_64", &entry);
         assert!(candidates
             .iter()
-            .any(|u| u == "https://xscriptor.github.io/x-repo/repo/x86_64/xfetch-0.1.0-1-x86_64.xp"));
+            .any(|u| u == "https://xscriptor.github.io/x-repo/x/x86_64/xfetch-0.1.0-1-x86_64.xp"));
         assert!(candidates
             .iter()
             .any(|u| u == "https://github.com/xscriptor/xfetch/releases/download/xfetch-0.1.0-1/xfetch-0.1.0-1-x86_64.xp"));
