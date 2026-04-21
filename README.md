@@ -1,124 +1,211 @@
-<h1 alignt="center">X Package Manager</h1>
+<h1 align="center" id="x-package-manager">X Package Manager</h1>
 
-> Modern, high-performance package manager written in pure Rust for the X distribution (Arch Linux-based).
+<p>Modern, high-performance package manager written in pure Rust for X</p>
 
-## Overview
+<h2 align="center" id="menu">Menu</h2>
 
-`xpm` is a native Rust replacement for `pacman` and `libalpm`, designed for the X distribution. It uses the `.xp` package format (X Package) natively and maintains compatibility with Arch Linux `.pkg.tar.zst` packages.
+<ul>
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#key-features">Key Features</a></li>
+    <li><a href="#installation">Installation</a></li>
+    <li><a href="#quick-install-published-package">Quick Install (Published Package)</a></li>
+    <li><a href="#build-from-source">Build From Source</a></li>
+    <li><a href="#usage">Usage</a></li>
+    <li><a href="#pacman-style-aliases">Pacman-Style Aliases</a></li>
+    <li><a href="#global-flags">Global Flags</a></li>
+    <li><a href="#configuration">Configuration</a></li>
+    <li><a href="#signed-repository-bootstrap">Signed Repository Bootstrap</a></li>
+    <li><a href="#key-bootstrap-checklist-xpm-native-repository">Key Bootstrap Checklist (xpm Native Repository)</a></li>
+    <li><a href="#signature-troubleshooting">Signature Troubleshooting</a></li>
+    <li><a href="#repository-management">Repository Management</a></li>
+    <li><a href="#project-structure">Project Structure</a></li>
+    <li><a href="#technical-architecture">Technical Architecture</a></li>
+    <li><a href="#dependency-resolution">Dependency Resolution</a></li>
+    <li><a href="#package-format">Package Format</a></li>
+    <li><a href="#security">Security</a></li>
+    <li><a href="#repository-hosting">Repository Hosting</a></li>
+    <li><a href="#roadmap">Roadmap</a></li>
+    <li><a href="#license">License</a></li>
+    <li><a href="#command-cheatsheet">Command Cheatsheet</a></li>
+    <li><a href="#x">X</a></li>
+</ul>
 
-### Key features
+<h2 align="center" id="overview">Overview</h2>
 
-- **Pure Rust** -- zero C dependencies at any stage
-- **Native .xp format** -- X Package format (tar.zst) with `.PKGINFO` / `.BUILDINFO` / `.MTREE` metadata
-- **SAT-based dependency resolver** -- powered by `resolvo` with CDCL and watched-literal propagation
-- **Arch compatible** -- reads `.pkg.tar.zst` packages and `alpm-repo-db` databases
-- **Flexible repository management** -- predefined and temporary repos with `xpm repo add/remove/list`
-- **OpenPGP verification** -- detached signatures with Web of Trust model
-- **TOML configuration** -- clean, human-readable config at `/etc/xpm.conf`
+<p><code>xpm</code> is a native Rust replacement for <code>pacman</code> and <code>libalpm</code>, designed for the X distribution. It uses the <code>.xp</code> package format (X Package) natively and maintains compatibility with Arch Linux <code>.pkg.tar.zst</code> packages.</p>
 
-## Installation
+<h3 align="center" id="key-features">Key Features</h3>
 
-### Quick install (published package)
+<ul>
+    <li><strong>Pure Rust</strong> - zero C dependencies at any stage</li>
+    <li><strong>Native .xp format</strong> - X Package format (tar.zst) with <code>.PKGINFO</code> / <code>.BUILDINFO</code> / <code>.MTREE</code> metadata</li>
+    <li><strong>SAT-based dependency resolver</strong> - powered by <code>resolvo</code> with CDCL and watched-literal propagation</li>
+    <li><strong>Arch compatible</strong> - reads <code>.pkg.tar.zst</code> packages and <code>alpm-repo-db</code> databases</li>
+    <li><strong>Flexible repository management</strong> - predefined and temporary repos with <code>xpm repo add/remove/list</code></li>
+    <li><strong>OpenPGP verification</strong> - detached signatures with Web of Trust model</li>
+    <li><strong>TOML configuration</strong> - clean, human-readable config at <code>/etc/xpm.conf</code></li>
+</ul>
 
-Install the latest published `xpm` build directly from the official repository:
+<h2 align="center" id="installation">Installation</h2>
 
-```bash
+<h3 align="center" id="quick-install-published-package">Quick Install (Published Package)</h3>
+
+<p>Install the latest published <code>xpm</code> build directly from the official repository:</p>
+
+<pre><code class="language-bash">curl -fsSL https://raw.githubusercontent.com/xscriptor/xpm/main/install.sh | bash
+</code></pre>
+
+<p>If <code>curl</code> is not available:</p>
+
+<pre><code class="language-bash">wget -qO- https://raw.githubusercontent.com/xscriptor/xpm/main/install.sh | bash
+</code></pre>
+
+<p>Optional environment variables for the installer:</p>
+
+<ul>
+    <li><code>XPM_PKG_URL</code>: override the package URL (for testing another build)</li>
+    <li><code>INSTALL_PREFIX</code>: change install prefix (default: <code>/usr/local</code>)</li>
+</ul>
+
+<p>Example:</p>
+
+<pre><code class="language-bash">INSTALL_PREFIX=/usr XPM_PKG_URL="https://xscriptor.github.io/x-repo/x/x86_64/xpm-0.1.0-3-x86_64.xp" \
 curl -fsSL https://raw.githubusercontent.com/xscriptor/xpm/main/install.sh | bash
-```
+</code></pre>
 
-If `curl` is not available:
+<h3 align="center" id="build-from-source">Build From Source</h3>
 
-```bash
-wget -qO- https://raw.githubusercontent.com/xscriptor/xpm/main/install.sh | bash
-```
-
-Optional environment variables for the installer:
-
-- `XPM_PKG_URL`: override the package URL (for testing another build)
-- `INSTALL_PREFIX`: change install prefix (default: `/usr/local`)
-
-Example:
-
-```bash
-INSTALL_PREFIX=/usr XPM_PKG_URL="https://xscriptor.github.io/x-repo/x/x86_64/xpm-0.1.0-3-x86_64.xp" \
-curl -fsSL https://raw.githubusercontent.com/xscriptor/xpm/main/install.sh | bash
-```
-
-### Build from source
-
-```bash
-git clone https://github.com/xscriptor/xpm.git
+<pre><code class="language-bash">git clone https://github.com/xscriptor/xpm.git
 cd xpm
 cargo build --release
 sudo cp target/release/xpm /usr/local/bin/
-```
+</code></pre>
 
-## Usage
+<h2 align="center" id="usage">Usage</h2>
 
-```bash
-# Sync package databases
+<pre><code class="language-bash"># Sync package databases
 xpm sync
 
 # Install packages
-xpm install <package> [<package>...]
+xpm install &lt;package&gt; [&lt;package&gt;...]
 
 # Remove packages
-xpm remove <package>
+xpm remove &lt;package&gt;
 
 # System upgrade
 xpm upgrade
 
 # Search packages
-xpm search <query>
+xpm search &lt;query&gt;
 
 # Query installed packages
 xpm query
 
 # Package info
-xpm info <package>
+xpm info &lt;package&gt;
 
 # List files owned by a package
-xpm files <package>
+xpm files &lt;package&gt;
 
 # Manage repositories
 xpm repo list
-xpm repo add <name> <url>
-xpm repo remove <name>
-```
+xpm repo add &lt;name&gt; &lt;url&gt;
+xpm repo remove &lt;name&gt;
+</code></pre>
 
-### Pacman-style aliases
+<h3 align="center" id="pacman-style-aliases">Pacman-Style Aliases</h3>
 
-| Alias | Command |
-|-------|---------|
-| `xpm Sy` | `xpm sync` |
-| `xpm S <pkg>` | `xpm install <pkg>` |
-| `xpm R <pkg>` | `xpm remove <pkg>` |
-| `xpm Su` | `xpm upgrade` |
-| `xpm Q` | `xpm query` |
-| `xpm Ss <query>` | `xpm search <query>` |
-| `xpm Si <pkg>` | `xpm info <pkg>` |
-| `xpm Ql <pkg>` | `xpm files <pkg>` |
+<table>
+    <thead>
+        <tr>
+            <th>Alias</th>
+            <th>Command</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>xpm Sy</code></td>
+            <td><code>xpm sync</code></td>
+        </tr>
+        <tr>
+            <td><code>xpm S &lt;pkg&gt;</code></td>
+            <td><code>xpm install &lt;pkg&gt;</code></td>
+        </tr>
+        <tr>
+            <td><code>xpm R &lt;pkg&gt;</code></td>
+            <td><code>xpm remove &lt;pkg&gt;</code></td>
+        </tr>
+        <tr>
+            <td><code>xpm Su</code></td>
+            <td><code>xpm upgrade</code></td>
+        </tr>
+        <tr>
+            <td><code>xpm Q</code></td>
+            <td><code>xpm query</code></td>
+        </tr>
+        <tr>
+            <td><code>xpm Ss &lt;query&gt;</code></td>
+            <td><code>xpm search &lt;query&gt;</code></td>
+        </tr>
+        <tr>
+            <td><code>xpm Si &lt;pkg&gt;</code></td>
+            <td><code>xpm info &lt;pkg&gt;</code></td>
+        </tr>
+        <tr>
+            <td><code>xpm Ql &lt;pkg&gt;</code></td>
+            <td><code>xpm files &lt;pkg&gt;</code></td>
+        </tr>
+    </tbody>
+</table>
 
-### Global flags
+<h3 align="center" id="global-flags">Global Flags</h3>
 
-| Flag | Description |
-|------|-------------|
-| `-c, --config <PATH>` | Custom configuration file |
-| `-v, --verbose` | Increase verbosity (-v, -vv, -vvv) |
-| `--no-confirm` | Skip confirmation prompts |
-| `--root <PATH>` | Alternative installation root |
-| `--dbpath <PATH>` | Alternative database directory |
-| `--cachedir <PATH>` | Alternative cache directory |
-| `--no-color` | Disable colored output |
+<table>
+    <thead>
+        <tr>
+            <th>Flag</th>
+            <th>Description</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>-c, --config &lt;PATH&gt;</code></td>
+            <td>Custom configuration file</td>
+        </tr>
+        <tr>
+            <td><code>-v, --verbose</code></td>
+            <td>Increase verbosity (-v, -vv, -vvv)</td>
+        </tr>
+        <tr>
+            <td><code>--no-confirm</code></td>
+            <td>Skip confirmation prompts</td>
+        </tr>
+        <tr>
+            <td><code>--root &lt;PATH&gt;</code></td>
+            <td>Alternative installation root</td>
+        </tr>
+        <tr>
+            <td><code>--dbpath &lt;PATH&gt;</code></td>
+            <td>Alternative database directory</td>
+        </tr>
+        <tr>
+            <td><code>--cachedir &lt;PATH&gt;</code></td>
+            <td>Alternative cache directory</td>
+        </tr>
+        <tr>
+            <td><code>--no-color</code></td>
+            <td>Disable colored output</td>
+        </tr>
+    </tbody>
+</table>
 
-## Configuration
+<h2 align="center" id="configuration">Configuration</h2>
 
-Configuration file: `/etc/xpm.conf` (TOML format).
+<p>Configuration file: <code>/etc/xpm.conf</code> (TOML format).</p>
 
-See [etc/xpm.conf.example](etc/xpm.conf.example) for all available options.
+<p>See <a href="etc/xpm.conf.example">etc/xpm.conf.example</a> for all available options.</p>
 
-```toml
-[options]
+<pre><code class="language-toml">[options]
 root_dir = "/"
 db_path = "/var/lib/xpm/"
 cache_dir = "/var/cache/xpm/pkg/"
@@ -129,57 +216,111 @@ parallel_downloads = 5
 [[repo]]
 name = "x"
 server = [
-    "https://xscriptor.github.io/x-repo/x/$arch",
+        "https://xscriptor.github.io/x-repo/x/$arch",
 ]
-```
+</code></pre>
 
-Optional additional repositories can be appended as extra `[[repo]]` blocks.
+<p>Optional additional repositories can be appended as extra <code>[[repo]]</code> blocks.</p>
 
-### Signed repository bootstrap
+<h3 align="center" id="signed-repository-bootstrap">Signed Repository Bootstrap</h3>
 
-To enforce signature verification from the official repository, install the published
-trusted keyring and switch the repository to `required` mode:
+<p>To enforce signature verification from the official repository, install the published trusted keyring and switch the repository to <code>required</code> mode:</p>
 
-```bash
-# System-wide keyring directory used by xpm (must match gpg_dir in config)
+<pre><code class="language-bash"># System-wide keyring directory used by xpm (must match gpg_dir in config)
 sudo install -d -m 755 /etc/xpm/gnupg
 
 # Download repository public keyring
 sudo curl -fsSL \
-    https://xscriptor.github.io/x-repo/x/x86_64/trustedkeys.gpg \
-    -o /etc/xpm/gnupg/trustedkeys.gpg
+        https://xscriptor.github.io/x-repo/x/x86_64/trustedkeys.gpg \
+        -o /etc/xpm/gnupg/trustedkeys.gpg
 
 # Optional: keep the ASCII-armored public key for auditing
 sudo curl -fsSL \
-    https://xscriptor.github.io/x-repo/x/x86_64/signing.pub \
-    -o /etc/xpm/gnupg/signing.pub
-```
+        https://xscriptor.github.io/x-repo/x/x86_64/signing.pub \
+        -o /etc/xpm/gnupg/signing.pub
+</code></pre>
 
-Then set:
+<p>Then set:</p>
 
-```toml
-[options]
+<pre><code class="language-toml">[options]
 gpg_dir = "/etc/xpm/gnupg/"
 sig_level = "required"
-```
+</code></pre>
 
-You can also override per repository:
+<p>You can also override per repository:</p>
 
-```toml
+<pre><code class="language-toml">[[repo]]
+name = "x"
+server = ["https://xscriptor.github.io/x-repo/x/$arch"]
+sig_level = "required"
+</code></pre>
+
+<h3 align="center" id="key-bootstrap-checklist-xpm-native-repository">Key Bootstrap Checklist (xpm Native Repository)</h3>
+
+<p>Use this checklist to avoid signature-related install failures when consuming the X native <code>.xp</code> repository:</p>
+
+<pre><code class="language-bash"># 1) Ensure keyring directory exists
+sudo install -d -m 755 /etc/xpm/gnupg
+
+# 2) Import published keyring + public key
+sudo curl -fsSL https://xscriptor.github.io/x-repo/x/x86_64/trustedkeys.gpg \
+        -o /etc/xpm/gnupg/trustedkeys.gpg
+sudo curl -fsSL https://xscriptor.github.io/x-repo/x/x86_64/signing.pub \
+        -o /etc/xpm/gnupg/signing.pub
+
+# 3) Confirm /etc/xpm.conf points to x endpoint and required signatures
+sudo tee /etc/xpm.conf &gt;/dev/null &lt;&lt;'EOF'
+[options]
+root_dir = "/"
+db_path = "/var/lib/xpm/"
+cache_dir = "/var/cache/xpm/pkg/"
+gpg_dir = "/etc/xpm/gnupg/"
+sig_level = "required"
+parallel_downloads = 5
+
 [[repo]]
 name = "x"
 server = ["https://xscriptor.github.io/x-repo/x/$arch"]
 sig_level = "required"
-```
+EOF
 
-### Repository management
+# 4) Sync and install from signed .xp repository
+sudo xpm sync
+sudo xpm install xpkg
+</code></pre>
 
-Predefined repositories are configured in `/etc/xpm.conf`. Temporary repositories can be added at runtime with `xpm repo add` and are stored in `/etc/xpm.d/`.
+<h3 align="center" id="signature-troubleshooting">Signature Troubleshooting</h3>
 
-## Project structure
+<ul>
+    <li><code>signature required but could not be downloaded</code>:
+        <ul>
+            <li>Check that <code>.sig</code> exists for package/database in <code>x/x86_64</code> endpoint.</li>
+        </ul>
+    </li>
+    <li><code>failed to load keyring</code> or <code>no certificates found in keyring</code>:
+        <ul>
+            <li>Confirm <code>gpg_dir</code> and <code>trustedkeys.gpg</code> path in <code>/etc/xpm.conf</code>.</li>
+        </ul>
+    </li>
+    <li><code>signature is valid but key is unknown</code>:
+        <ul>
+            <li>Refresh <code>/etc/xpm/gnupg/trustedkeys.gpg</code> from published endpoint and re-sync.</li>
+        </ul>
+    </li>
+    <li>Package not found:
+        <ul>
+            <li>Confirm xpm repository URL is <code>https://xscriptor.github.io/x-repo/x/$arch</code> and not the pacman endpoint under <code>/repo/x86_64</code>.</li>
+        </ul>
+    </li>
+</ul>
 
-```text
-xpm/
+<h3 align="center" id="repository-management">Repository Management</h3>
+
+<p>Predefined repositories are configured in <code>/etc/xpm.conf</code>. Temporary repositories can be added at runtime with <code>xpm repo add</code> and are stored in <code>/etc/xpm.d/</code>.</p>
+
+<h2 align="center" id="project-structure">Project Structure</h2>
+
+<pre><code class="language-text">xpm/
 ├── Cargo.toml                  # Workspace root
 ├── crates/
 │   ├── xpm/                    # Binary crate (CLI frontend)
@@ -195,88 +336,141 @@ xpm/
 ├── etc/
 │   └── xpm.conf.example        # Example configuration
 └── ROADMAP.md                   # Development roadmap
-```
+</code></pre>
 
-## Technical architecture
+<h2 align="center" id="technical-architecture">Technical Architecture</h2>
 
-### Dependency resolution
+<h3 align="center" id="dependency-resolution">Dependency Resolution</h3>
 
-`xpm` uses a logic-based SAT solver (`resolvo`) that transforms package relationships into CNF boolean clauses:
+<p><code>xpm</code> uses a logic-based SAT solver (<code>resolvo</code>) that transforms package relationships into CNF boolean clauses:</p>
 
-| Requirement | CNF Clause | Meaning |
-|---|---|---|
-| Dependency | `!foo OR bar` | If `foo` is installed, `bar` must be too |
-| Root requirement | `foo` | Target package is mandatory |
-| Conflict | `!bar_v1 OR !bar_v2` | Mutually exclusive versions |
+<table>
+    <thead>
+        <tr>
+            <th>Requirement</th>
+            <th>CNF Clause</th>
+            <th>Meaning</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Dependency</td>
+            <td><code>!foo OR bar</code></td>
+            <td>If <code>foo</code> is installed, <code>bar</code> must be too</td>
+        </tr>
+        <tr>
+            <td>Root requirement</td>
+            <td><code>foo</code></td>
+            <td>Target package is mandatory</td>
+        </tr>
+        <tr>
+            <td>Conflict</td>
+            <td><code>!bar_v1 OR !bar_v2</code></td>
+            <td>Mutually exclusive versions</td>
+        </tr>
+    </tbody>
+</table>
 
-The solver implements Unit Propagation with watched literals and Conflict-Driven Clause Learning (CDCL) for efficient backtracking.
+<p>The solver implements Unit Propagation with watched literals and Conflict-Driven Clause Learning (CDCL) for efficient backtracking.</p>
 
-### Package format
+<h3 align="center" id="package-format">Package Format</h3>
 
-Packages use the ALPM `.pkg.tar.zst` format with Zstandard compression:
+<p>Packages use the ALPM <code>.pkg.tar.zst</code> format with Zstandard compression:</p>
 
-- `.PKGINFO` -- package name, version, dependencies
-- `.BUILDINFO` -- reproducible build environment
-- `.MTREE` -- file integrity hashes
-- `.INSTALL` -- optional pre/post install scripts
+<ul>
+    <li><code>.PKGINFO</code> - package name, version, dependencies</li>
+    <li><code>.BUILDINFO</code> - reproducible build environment</li>
+    <li><code>.MTREE</code> - file integrity hashes</li>
+    <li><code>.INSTALL</code> - optional pre/post install scripts</li>
+</ul>
 
-### Security
+<h3 align="center" id="security">Security</h3>
 
-- **OpenPGP detached signatures** (`.sig`) for packages and databases
-- **Web of Trust** model for key validation
-- **Fakeroot** build environment for safe package creation
-- **Package linting** framework for quality assurance
+<ul>
+    <li><strong>OpenPGP detached signatures</strong> (<code>.sig</code>) for packages and databases</li>
+    <li><strong>Web of Trust</strong> model for key validation</li>
+    <li><strong>Fakeroot</strong> build environment for safe package creation</li>
+    <li><strong>Package linting</strong> framework for quality assurance</li>
+</ul>
 
-## Repository hosting
+<h2 align="center" id="repository-hosting">Repository Hosting</h2>
 
-The default package repository is hosted on **GitHub Pages** at `xscriptor.github.io/x-repo`. This will migrate to the `xscriptor` organization for consistency as the project grows. `xpm` supports any HTTP-based static file server, making future migration to a VPS transparent.
+<p>The default package repository is hosted on <strong>GitHub Pages</strong> at <code>xscriptor.github.io/x-repo</code>. This will migrate to the <code>xscriptor</code> organization for consistency as the project grows. <code>xpm</code> supports any HTTP-based static file server, making future migration to a VPS transparent.</p>
 
-## Roadmap
+<h2 align="center" id="roadmap">Roadmap</h2>
 
-See [ROADMAP.md](ROADMAP.md) for the full development roadmap.
+<p>See <a href="ROADMAP.md">ROADMAP.md</a> for the full development roadmap.</p>
 
-| Version | Milestone |
-|---|---|
-| `v0.1.0` | Functional CLI with configuration |
-| `v0.5.0` | Native engine (resolver + packages + repo db) |
-| `v0.8.0` | Security and transaction management |
-| `v1.0.0` | Benchmarked, tested, production-ready |
+<table>
+    <thead>
+        <tr>
+            <th>Version</th>
+            <th>Milestone</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>v0.1.0</code></td>
+            <td>Functional CLI with configuration</td>
+        </tr>
+        <tr>
+            <td><code>v0.5.0</code></td>
+            <td>Native engine (resolver + packages + repo db)</td>
+        </tr>
+        <tr>
+            <td><code>v0.8.0</code></td>
+            <td>Security and transaction management</td>
+        </tr>
+        <tr>
+            <td><code>v1.0.0</code></td>
+            <td>Benchmarked, tested, production-ready</td>
+        </tr>
+    </tbody>
+</table>
 
-## License
+<h2 align="center" id="license">License</h2>
 
-GPL-3.0-or-later. See [LICENSE](LICENSE).
+<p>GPL-3.0-or-later. See <a href="LICENSE">LICENSE</a>.</p>
 
-## Command Cheatsheet
+<h2 align="center" id="command-cheatsheet">Command Cheatsheet</h2>
 
-```bash
-# Sync repositories
+<pre><code class="language-bash"># Sync repositories
 xpm sync
 
 # Install package(s)
-xpm install <pkg>
-xpm install <pkg1> <pkg2>
+xpm install &lt;pkg&gt;
+xpm install &lt;pkg1&gt; &lt;pkg2&gt;
 
 # Install without prompt
-xpm install --no-confirm <pkg>
+xpm install --no-confirm &lt;pkg&gt;
 
 # Remove package(s)
-xpm remove <pkg>
+xpm remove &lt;pkg&gt;
 
 # Upgrade all installed packages
 xpm upgrade
 
 # Search package
-xpm search <query>
+xpm search &lt;query&gt;
 
 # Package info
-xpm info <pkg>
+xpm info &lt;pkg&gt;
 
 # List files owned by a package
-xpm files <pkg>
+xpm files &lt;pkg&gt;
 
 # Query local packages
 xpm query
 
 # Show configured repos
 xpm repo list
-```
+</code></pre>
+
+<div align="center">
+    <h2 id="x" align="center">X</h2>
+    <p>
+        <a href="https://dev.xscriptor.com"><img src="https://xscriptor.github.io/icons/icons/code/product-design/xsvg/ellipsis.svg" width="24" alt="X Web" /></a>
+        &amp;
+        <a href="https://github.com/xscriptor"><img src="https://xscriptor.github.io/icons/icons/code/product-design/xsvg/github.svg" width="24" alt="X Profile" /></a>
+    </p>
+</div>

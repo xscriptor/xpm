@@ -21,9 +21,9 @@ Next step: Phase 5 (repository database).
 - [x] Initialize Rust crate with cargo init (#1)
 - [x] Configure Cargo workspace — multi-crate (#2)
 - [x] Add linter and formatter configuration (#3)
-- [ ] Set up CI pipeline (#4)
+- [x] Set up CI pipeline (#4)
 - [x] Add license and crate metadata (#5)
-- [/] Update README to reflect current architecture and repo strategy (#48)
+- [x] Update README to reflect current architecture and repo strategy (#48)
 
 ## Phase 1 · CLI and Configuration <!-- phase:phase-1:cli -->
 
@@ -31,12 +31,12 @@ Next step: Phase 5 (repository database).
 - [x] Implement configuration parser (#7)
 - [x] Implement main.rs orchestration (#8)
 - [x] Integrate lib.rs with CLI (#9)
-- [/] Define activation commands and parameter matrix — document all CLI invocations, flags and aliases (#46)
-- [/] Define fetch targets — repositories, mirrors and sync endpoints (#47)
+- [x] Define activation commands and parameter matrix — document all CLI invocations, flags and aliases (#46)
+- [x] Define fetch targets — repositories, mirrors and sync endpoints (#47)
 - [x] Implement repo subcommand — xpm repo add, remove, list (#49)
 - [x] Implement temporary repo file — /etc/xpm.d/ directory for user-added repos (#50)
 - [x] Set predefined default repo in config — GitHub Pages x-repo as built-in (#51)
-- [/] Implement custom help parameter — xpm help with detailed usage info (#54)
+- [x] Implement custom help parameter — xpm help with detailed usage info (#54)
 
 ## Phase 2 · FFI Bindings with libalpm — Transitional Bridge <!-- phase:phase-2:ffi-bridge -->
 
@@ -89,7 +89,7 @@ Next step: Phase 5 (repository database).
 - [x] Implement alpm-repo-files support (#23)
   - [x] Parse file listings from .files archives
 - [ ] Implement agnostic symlink handling (#24)
-  - [ ] Implement local package database — track installed packages under /var/lib/xpm/local/
+  - [x] Implement local package database — track installed packages under /var/lib/xpm/local/
 - [x] Implement remote database sync (#25)
   - [x] Implement HTTP download client — reqwest wrapper with progress, retries and parallel downloads
   - [x] Download and update .db files from configured mirrors
@@ -104,8 +104,8 @@ Next step: Phase 5 (repository database).
 
 ## Phase 6 · Security and Verification <!-- phase:phase-6:security -->
 
-- [ ] Implement OpenPGP signature verification (#26)
-  - [ ] Verify detached .sig files via sequoia-openpgp (pure Rust)
+- [x] Implement OpenPGP signature verification (#26)
+  - [x] Verify detached .sig files via sequoia-openpgp (pure Rust)
 - [ ] Implement Berblom algorithm for key management (#27)
   - [ ] Import, list, trust and revoke keys in local keyring
 - [ ] Implement Web of Trust — WoT — model (#28)
