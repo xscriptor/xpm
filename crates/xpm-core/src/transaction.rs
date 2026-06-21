@@ -57,7 +57,7 @@ pub enum TransactionOp {
         pkg_name: String,
         pkg_version: String,
         pkg_file: PathBuf,
-        metadata: Option<PackageMeta>,
+        metadata: Box<Option<PackageMeta>>,
     },
     /// Remove an installed package.
     Remove { pkg_name: String },
@@ -148,7 +148,7 @@ impl Transaction {
             pkg_name,
             pkg_version,
             pkg_file,
-            metadata: None,
+            metadata: Box::new(None),
         });
 
         Ok(())
@@ -323,7 +323,12 @@ impl Transaction {
     }
 
     /// Upgrade a single package (internal - called by commit).
-    fn execute_upgrade(&self, pkg_name: &str, new_version: &str, new_pkg_file: &Path) -> XpmResult<()> {
+    fn execute_upgrade(
+        &self,
+        pkg_name: &str,
+        new_version: &str,
+        new_pkg_file: &Path,
+    ) -> XpmResult<()> {
         // Remove old version
         self.execute_remove(pkg_name)?;
 
@@ -461,7 +466,10 @@ mod tests {
         assert!(log_path.exists(), "log file should exist");
 
         let content = fs::read_to_string(&log_path).expect("read log");
-        assert!(content.contains("test message"), "log should contain message");
+        assert!(
+            content.contains("test message"),
+            "log should contain message"
+        );
     }
 
     #[test]
@@ -569,20 +577,15 @@ mod tests {
         let pkg_file = make_test_xp_package(&cache_dir);
 
         // Create transaction
-        let mut tx = Transaction::new(root.clone(), local_db.clone())
-            .expect("create transaction");
+        let mut tx = Transaction::new(root.clone(), local_db.clone()).expect("create transaction");
 
         // Setup hooks
         let hooks = HookChain::default();
         tx.set_hooks(hooks);
 
         // Add install operation
-        tx.add_install(
-            "test".to_string(),
-            "1.0.0-1".to_string(),
-            pkg_file.clone(),
-        )
-        .expect("add install");
+        tx.add_install("test".to_string(), "1.0.0-1".to_string(), pkg_file.clone())
+            .expect("add install");
 
         // Prepare transaction
         tx.prepare().expect("prepare");
@@ -616,17 +619,12 @@ mod tests {
         // First install a package
         let pkg_file = make_test_xp_package(&cache_dir);
 
-        let mut tx = Transaction::new(root.clone(), local_db.clone())
-            .expect("create transaction");
+        let mut tx = Transaction::new(root.clone(), local_db.clone()).expect("create transaction");
         let hooks = HookChain::default();
         tx.set_hooks(hooks);
 
-        tx.add_install(
-            "test".to_string(),
-            "1.0.0-1".to_string(),
-            pkg_file,
-        )
-        .expect("add install");
+        tx.add_install("test".to_string(), "1.0.0-1".to_string(), pkg_file)
+            .expect("add install");
 
         tx.prepare().expect("prepare");
         tx.commit().expect("commit");
@@ -636,12 +634,11 @@ mod tests {
         assert!(test_file.exists(), "file should exist after install");
 
         // Now remove the package (without hooks for now)
-        let mut tx2 = Transaction::new(root.clone(), local_db.clone())
-            .expect("create remove transaction");
+        let mut tx2 =
+            Transaction::new(root.clone(), local_db.clone()).expect("create remove transaction");
         // Don't set hooks to isolate removal logic
 
-        tx2.add_remove("test".to_string())
-            .expect("add remove");
+        tx2.add_remove("test".to_string()).expect("add remove");
 
         tx2.prepare().expect("prepare");
         tx2.commit().expect("commit");
@@ -665,17 +662,12 @@ mod tests {
         fs::copy(&pkg1, &pkg2_path).expect("copy package");
 
         // Create transaction with multiple installs
-        let mut tx = Transaction::new(root.clone(), local_db.clone())
-            .expect("create transaction");
+        let mut tx = Transaction::new(root.clone(), local_db.clone()).expect("create transaction");
         let hooks = HookChain::default();
         tx.set_hooks(hooks);
 
-        tx.add_install(
-            "test".to_string(),
-            "1.0.0-1".to_string(),
-            pkg1,
-        )
-        .expect("add install 1");
+        tx.add_install("test".to_string(), "1.0.0-1".to_string(), pkg1)
+            .expect("add install 1");
 
         // Prepare and commit first should succeed
         tx.prepare().expect("prepare");

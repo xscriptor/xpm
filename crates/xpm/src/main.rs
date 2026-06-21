@@ -19,11 +19,11 @@ use cli::{Cli, Command};
 use xpm_core::config::Repository;
 use xpm_core::repo::RepoManager;
 use xpm_core::repo_db::{merge_files_db, parse_sync_db};
-use xpm_core::resolver::Version;
 use xpm_core::repo_sync::{
     download_first_available, package_download_candidates, sync_repo_databases,
     verify_remote_signature, verify_sha256,
 };
+use xpm_core::resolver::Version;
 use xpm_core::{HookChain, Transaction};
 use xpm_core::{XpmConfig, XpmError};
 
@@ -182,7 +182,7 @@ fn cmd_sync(config: &XpmConfig, args: &cli::SyncArgs) -> Result<()> {
     Ok(())
 }
 
-fn display_rel_or_abs(path: &PathBuf) -> String {
+fn display_rel_or_abs(path: &Path) -> String {
     std::env::current_dir()
         .ok()
         .and_then(|cwd| path.strip_prefix(cwd).ok().map(|p| p.display().to_string()))
@@ -294,15 +294,13 @@ fn cmd_install(config: &XpmConfig, args: &cli::InstallArgs, no_confirm: bool) ->
         .with_context(|| format!("failed to create cache dir {}", cache_dir.display()))?;
 
     // Create transaction
-    let mut tx = Transaction::new(
-        config.options.root_dir.clone(),
-        local_db_dir,
-    ).context("failed to create transaction")?;
+    let mut tx = Transaction::new(config.options.root_dir.clone(), local_db_dir)
+        .context("failed to create transaction")?;
 
     // Setup hooks chain
     let hooks = HookChain::default();
     tx.set_hooks(hooks);
-    tx.set_shell_integration(config.options.root_dir != PathBuf::from("/"));
+    tx.set_shell_integration(config.options.root_dir != Path::new("/"));
 
     // Phase 1: Download and validate packages
     for pkg_name in &args.packages {
@@ -349,12 +347,14 @@ fn cmd_install(config: &XpmConfig, args: &cli::InstallArgs, no_confirm: bool) ->
         let sig_level = repo.sig_level.unwrap_or(config.options.sig_level);
         let keyring_path = config.options.gpg_dir.join("trustedkeys.gpg");
         let sig_url = format!("{mirror}.sig");
-        verify_remote_signature(&dest, &sig_url, sig_level, &keyring_path, 3).with_context(|| {
-            format!(
-                "signature verification failed for '{}' from repo '{}'",
-                pkg_name, repo.name
-            )
-        })?;
+        verify_remote_signature(&dest, &sig_url, sig_level, &keyring_path, 3).with_context(
+            || {
+                format!(
+                    "signature verification failed for '{}' from repo '{}'",
+                    pkg_name, repo.name
+                )
+            },
+        )?;
 
         if let Some(sum) = entry.sha256sum.as_deref() {
             verify_sha256(&dest, sum)?;
@@ -364,11 +364,8 @@ fn cmd_install(config: &XpmConfig, args: &cli::InstallArgs, no_confirm: bool) ->
         println!("   source: {}", mirror);
 
         // Add to transaction
-        tx.add_install(
-            entry.name.clone(),
-            entry.version.clone(),
-            dest,
-        ).context("failed to add install to transaction")?;
+        tx.add_install(entry.name.clone(), entry.version.clone(), dest)
+            .context("failed to add install to transaction")?;
     }
 
     if args.download_only {
@@ -382,15 +379,21 @@ fn cmd_install(config: &XpmConfig, args: &cli::InstallArgs, no_confirm: bool) ->
     )?;
 
     // Phase 2: Prepare transaction (pre-flight checks)
-    println!(":: Preparing transaction ({} operation(s))...", tx.operation_count());
+    println!(
+        ":: Preparing transaction ({} operation(s))...",
+        tx.operation_count()
+    );
     tx.prepare().context("transaction preparation failed")?;
 
     // Phase 3: Commit transaction (write changes)
     println!(":: Committing transaction...");
     tx.commit().context("transaction commit failed")?;
 
-    println!(":: {} package(s) installed successfully.", args.packages.len());
-    if config.options.root_dir != PathBuf::from("/") {
+    println!(
+        ":: {} package(s) installed successfully.",
+        args.packages.len()
+    );
+    if config.options.root_dir != Path::new("/") {
         println!(":: Shell integration enabled via ~/.local/bin shims.");
         println!(":: If this shell does not find new commands yet, run: hash -r");
         println!(":: For immediate PATH refresh, run: source ~/.zshrc or source ~/.bashrc");
@@ -406,26 +409,22 @@ fn cmd_remove(config: &XpmConfig, args: &cli::RemoveArgs, no_confirm: bool) -> R
 
     // Create transaction
     let local_db_dir = config.options.db_path.join("local");
-    let mut tx = Transaction::new(
-        config.options.root_dir.clone(),
-        local_db_dir.clone(),
-    ).context("failed to create transaction")?;
+    let mut tx = Transaction::new(config.options.root_dir.clone(), local_db_dir.clone())
+        .context("failed to create transaction")?;
 
     // Setup hooks chain
     let hooks = HookChain::default();
     tx.set_hooks(hooks);
-    tx.set_shell_integration(config.options.root_dir != PathBuf::from("/"));
+    tx.set_shell_integration(config.options.root_dir != Path::new("/"));
 
     // Add remove operations for each package
     for pkg_name in &args.packages {
         // Verify package is installed
         let pkg_dir = local_db_dir.join(pkg_name);
         if !pkg_dir.exists() {
-            return Err(XpmError::Package(format!(
-                "package '{}' is not installed",
-                pkg_name
-            ))
-            .into());
+            return Err(
+                XpmError::Package(format!("package '{}' is not installed", pkg_name)).into(),
+            );
         }
 
         tx.add_remove(pkg_name.clone())
@@ -435,15 +434,21 @@ fn cmd_remove(config: &XpmConfig, args: &cli::RemoveArgs, no_confirm: bool) -> R
     confirm_action(":: Proceed with removal? [y/N] ", no_confirm)?;
 
     // Phase 2: Prepare transaction (pre-flight checks)
-    println!(":: Preparing transaction ({} operation(s))...", tx.operation_count());
+    println!(
+        ":: Preparing transaction ({} operation(s))...",
+        tx.operation_count()
+    );
     tx.prepare().context("transaction preparation failed")?;
 
     // Phase 3: Commit transaction (write changes)
     println!(":: Committing transaction...");
     tx.commit().context("transaction commit failed")?;
 
-    println!(":: {} package(s) removed successfully.", args.packages.len());
-    if config.options.root_dir != PathBuf::from("/") {
+    println!(
+        ":: {} package(s) removed successfully.",
+        args.packages.len()
+    );
+    if config.options.root_dir != Path::new("/") {
         println!(":: If command lookup is stale in current shell, run: hash -r");
     }
     Ok(())
@@ -490,11 +495,7 @@ fn cmd_upgrade(config: &XpmConfig, args: &cli::UpgradeArgs, no_confirm: bool) ->
 
         let ordering = Version::cmp_versions(&entry.version, &local_version);
         if ordering.is_gt() || (args.force && ordering.is_eq()) {
-            planned.push((
-                repo.clone(),
-                entry.clone(),
-                local_version,
-            ));
+            planned.push((repo.clone(), entry.clone(), local_version));
         }
     }
 
@@ -514,7 +515,7 @@ fn cmd_upgrade(config: &XpmConfig, args: &cli::UpgradeArgs, no_confirm: bool) ->
         .context("failed to create transaction")?;
     let hooks = HookChain::default();
     tx.set_hooks(hooks);
-    tx.set_shell_integration(config.options.root_dir != PathBuf::from("/"));
+    tx.set_shell_integration(config.options.root_dir != Path::new("/"));
 
     for (repo, entry, _) in planned {
         let filename = entry.filename.clone().ok_or_else(|| {
@@ -536,12 +537,14 @@ fn cmd_upgrade(config: &XpmConfig, args: &cli::UpgradeArgs, no_confirm: bool) ->
         let sig_level = repo.sig_level.unwrap_or(config.options.sig_level);
         let keyring_path = config.options.gpg_dir.join("trustedkeys.gpg");
         let sig_url = format!("{mirror}.sig");
-        verify_remote_signature(&dest, &sig_url, sig_level, &keyring_path, 3).with_context(|| {
-            format!(
-                "signature verification failed for '{}' from repo '{}'",
-                entry.name, repo.name
-            )
-        })?;
+        verify_remote_signature(&dest, &sig_url, sig_level, &keyring_path, 3).with_context(
+            || {
+                format!(
+                    "signature verification failed for '{}' from repo '{}'",
+                    entry.name, repo.name
+                )
+            },
+        )?;
 
         if let Some(sum) = entry.sha256sum.as_deref() {
             verify_sha256(&dest, sum)?;
@@ -553,7 +556,10 @@ fn cmd_upgrade(config: &XpmConfig, args: &cli::UpgradeArgs, no_confirm: bool) ->
             .context("failed to add install op to transaction")?;
     }
 
-    println!(":: Preparing transaction ({} operation(s))...", tx.operation_count());
+    println!(
+        ":: Preparing transaction ({} operation(s))...",
+        tx.operation_count()
+    );
     tx.prepare().context("transaction preparation failed")?;
 
     println!(":: Committing transaction...");
@@ -629,9 +635,7 @@ fn read_latest_remote_entries(
         }
 
         for (name, entry) in best_by_name {
-            latest
-                .entry(name)
-                .or_insert_with(|| (repo.clone(), entry));
+            latest.entry(name).or_insert_with(|| (repo.clone(), entry));
         }
     }
 

@@ -78,9 +78,10 @@ impl Hook for FileExtractionHook {
             // Check magic bytes
             if n >= 4 && magic[..4] == [0x28, 0xB5, 0x2F, 0xFD] {
                 // Zstd
-                Box::new(Decoder::new(buf).map_err(|e| {
-                    XpmError::Package(format!("failed to decode zstd: {}", e))
-                })?)
+                Box::new(
+                    Decoder::new(buf)
+                        .map_err(|e| XpmError::Package(format!("failed to decode zstd: {}", e)))?,
+                )
             } else if n >= 2 && magic[..2] == [0x1F, 0x8B] {
                 // Gzip
                 Box::new(GzDecoder::new(buf))
@@ -166,12 +167,43 @@ impl Hook for FileExtractionHook {
     }
 }
 
-/// Execute native package scriptlets from `.INSTALL` files.
-pub struct ScriptletHook;
+/// Execute pre-operation package scriptlets from `.INSTALL` files.
+///
+/// Runs before file changes: `pre_install` (install), `pre_upgrade` (upgrade), `pre_remove` (remove).
+pub struct PreScriptletHook;
 
-impl Hook for ScriptletHook {
+impl Hook for PreScriptletHook {
     fn name(&self) -> &str {
-        "scriptlet"
+        "pre-scriptlet"
+    }
+
+    fn run(&self, context: &HookContext) -> XpmResult<()> {
+        let Some(script_data) = load_install_script(context)? else {
+            return Ok(());
+        };
+
+        let functions: &[&str] = match context.operation_type {
+            OperationType::Install => &["pre_install"],
+            OperationType::Upgrade => &["pre_upgrade"],
+            OperationType::Remove => &["pre_remove"],
+        };
+
+        if functions.is_empty() {
+            return Ok(());
+        }
+
+        run_scriptlet_functions(context, &script_data, functions)
+    }
+}
+
+/// Execute post-operation package scriptlets from `.INSTALL` files.
+///
+/// Runs after file changes: `post_install` (install), `post_upgrade` (upgrade), `post_remove` (remove).
+pub struct PostScriptletHook;
+
+impl Hook for PostScriptletHook {
+    fn name(&self) -> &str {
+        "post-scriptlet"
     }
 
     fn run(&self, context: &HookContext) -> XpmResult<()> {
@@ -181,8 +213,8 @@ impl Hook for ScriptletHook {
 
         let functions: &[&str] = match context.operation_type {
             OperationType::Install => &["post_install"],
-            OperationType::Upgrade => &["post_upgrade", "post_install"],
-            OperationType::Remove => &[],
+            OperationType::Upgrade => &["post_upgrade"],
+            OperationType::Remove => &["post_remove"],
         };
 
         if functions.is_empty() {
@@ -553,11 +585,12 @@ impl HookChain {
 impl Default for HookChain {
     fn default() -> Self {
         let mut chain = HookChain::new();
-        // Add default hooks in order
+        // Hook order: pre-scriptlet → file extraction → file removal → post-scriptlet → local db
         chain.add_hook(Box::new(MetadataLoadHook));
+        chain.add_hook(Box::new(PreScriptletHook));
         chain.add_hook(Box::new(FileExtractionHook));
-        chain.add_hook(Box::new(ScriptletHook));
         chain.add_hook(Box::new(FileRemovalHook));
+        chain.add_hook(Box::new(PostScriptletHook));
         chain.add_hook(Box::new(LocalDbHook));
         chain
     }
@@ -589,13 +622,13 @@ mod tests {
     fn hook_chain_default_has_hooks() {
         let chain = HookChain::default();
         assert!(!chain.hooks().is_empty());
-        assert_eq!(chain.hooks().len(), 5); // metadata, extraction, scriptlet, removal, localdb
+        assert_eq!(chain.hooks().len(), 6); // metadata, pre-scriptlet, extraction, removal, post-scriptlet, localdb
     }
 
     #[test]
-    fn scriptlet_hook_runs_post_install() {
+    fn post_scriptlet_hook_runs_post_install() {
         let (root, db_tmp, mut ctx) = test_context(OperationType::Install);
-        let hook = ScriptletHook;
+        let hook = PostScriptletHook;
         ctx.pkg_file = None;
 
         let pkg_dir = db_tmp.path().join(&ctx.pkg_name);

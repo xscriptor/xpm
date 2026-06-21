@@ -294,10 +294,7 @@ mod tests {
         assert_eq!(hello.version, "1.0-1");
         assert_eq!(hello.description.as_deref(), Some("hello package"));
         assert_eq!(hello.arch.as_deref(), Some("x86_64"));
-        assert_eq!(
-            hello.filename.as_deref(),
-            Some("hello-1.0-1-x86_64.xp")
-        );
+        assert_eq!(hello.filename.as_deref(), Some("hello-1.0-1-x86_64.xp"));
         assert_eq!(hello.sha256sum.as_deref(), Some("abc123"));
         assert_eq!(
             hello.url.as_deref(),
@@ -382,7 +379,10 @@ mod tests {
         let linux = &db.entries[0];
         assert_eq!(linux.name, "linux");
         assert_eq!(linux.version, "6.1.0-1");
-        assert_eq!(linux.description.as_deref(), Some("The Linux kernel and modules"));
+        assert_eq!(
+            linux.description.as_deref(),
+            Some("The Linux kernel and modules")
+        );
         assert_eq!(linux.arch.as_deref(), Some("x86_64"));
         // These fields should be None for standard Arch .db
         assert!(linux.filename.is_none());
@@ -417,10 +417,7 @@ mod tests {
         assert_eq!(xpkg.name, "xpkg");
         assert_eq!(xpkg.version, "0.1.0-1");
         // Extended fields should be present
-        assert_eq!(
-            xpkg.filename.as_deref(),
-            Some("xpkg-0.1.0-1-x86_64.xp")
-        );
+        assert_eq!(xpkg.filename.as_deref(), Some("xpkg-0.1.0-1-x86_64.xp"));
         assert_eq!(
             xpkg.sha256sum.as_deref(),
             Some("deadbeefcafebabe0000000000000000deadbeefcafebabe0000000000000000")
@@ -465,10 +462,7 @@ mod tests {
     fn parse_minimal_valid_db() {
         // Minimum required fields: NAME, VERSION.
         // This validates parser robustness for minimal entries.
-        let bytes = make_gzip_tar(&[(
-            "tiny-1.0-1/desc",
-            "%NAME%\ntiny\n\n%VERSION%\n1.0-1\n",
-        )]);
+        let bytes = make_gzip_tar(&[("tiny-1.0-1/desc", "%NAME%\ntiny\n\n%VERSION%\n1.0-1\n")]);
 
         let db = parse_sync_db_bytes(&bytes, "test").expect("parse minimal db");
         assert_eq!(db.entries.len(), 1);
@@ -497,7 +491,10 @@ mod tests {
             entries.push((format!("{}/desc", version), desc));
         }
 
-        let entry_refs: Vec<_> = entries.iter().map(|(p, c)| (p.as_str(), c.as_str())).collect();
+        let entry_refs: Vec<_> = entries
+            .iter()
+            .map(|(p, c)| (p.as_str(), c.as_str()))
+            .collect();
         let bytes = make_gzip_tar(&entry_refs);
 
         let db = parse_sync_db_bytes(&bytes, "large").expect("parse large repo");
@@ -507,16 +504,13 @@ mod tests {
         assert_eq!(names.len(), 50, "All package names should be unique");
     }
 
-
     #[test]
     fn parse_db_with_optional_arch_field() {
         // Some packages may omit ARCH; should default or be None.
-        let bytes = make_gzip_tar(&[
-            (
-                "noarch-1.0-1/desc",
-                "%NAME%\nnoarch\n\n%VERSION%\n1.0-1\n\n%DESC%\nNo architecture specified\n",
-            ),
-        ]);
+        let bytes = make_gzip_tar(&[(
+            "noarch-1.0-1/desc",
+            "%NAME%\nnoarch\n\n%VERSION%\n1.0-1\n\n%DESC%\nNo architecture specified\n",
+        )]);
 
         let db = parse_sync_db_bytes(&bytes, "extra").expect("parse db without arch");
         assert_eq!(db.entries[0].arch, None); // Our parser doesn't force a default
@@ -537,10 +531,7 @@ mod tests {
         ]);
 
         let files_bytes = make_gzip_tar(&[
-            (
-                "bin-1.0-1/files",
-                "%FILES%\nusr/bin/\nusr/bin/tool\n",
-            ),
+            ("bin-1.0-1/files", "%FILES%\nusr/bin/\nusr/bin/tool\n"),
             (
                 "lib-1.0-1/files",
                 "%FILES%\nusr/lib/\nusr/lib64/\nusr/lib/libfoo.so\n",
@@ -561,20 +552,25 @@ mod tests {
     #[test]
     fn real_db_file_from_disk() {
         // Test parsing a real .db file if it exists in the workspace.
-        let real_db_path = Path::new("/home/xscriptor/Documents/repos/xpkgrepos/x-repo/public/repo/x86_64/x.db.tar.gz");
-        
+        let real_db_path = Path::new(
+            "/home/xscriptor/Documents/repos/xpkgrepos/x-repo/public/repo/x86_64/x.db.tar.gz",
+        );
+
         if real_db_path.exists() {
             let bytes = fs::read(real_db_path).expect("read real x.db");
             let db = parse_sync_db_bytes(&bytes, "x").expect("parse real x.db");
-            
+
             // Validate structure
-            assert!(!db.entries.is_empty(), "x.db should contain at least one entry");
+            assert!(
+                !db.entries.is_empty(),
+                "x.db should contain at least one entry"
+            );
             for entry in &db.entries {
                 // Every entry must have name and version
                 assert!(!entry.name.is_empty(), "entry name must not be empty");
                 assert!(!entry.version.is_empty(), "entry version must not be empty");
             }
-            
+
             // Check for expected xfetch entry if present
             if let Some(xfetch) = db.entries.iter().find(|e| e.name == "xfetch") {
                 assert_eq!(xfetch.version, "0.1.0-1");
@@ -589,10 +585,7 @@ mod tests {
     fn parse_db_with_version_variants() {
         // Test parsing versions in different formats (semantic, pre-release, etc).
         let bytes = make_gzip_tar(&[
-            (
-                "pkg1-1.0.0-1/desc",
-                "%NAME%\npkg1\n\n%VERSION%\n1.0.0-1\n",
-            ),
+            ("pkg1-1.0.0-1/desc", "%NAME%\npkg1\n\n%VERSION%\n1.0.0-1\n"),
             (
                 "pkg2-2.5beta-2/desc",
                 "%NAME%\npkg2\n\n%VERSION%\n2.5beta-2\n",
