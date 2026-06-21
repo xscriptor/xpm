@@ -196,7 +196,11 @@ fn signature_cache_path(artifact_path: &Path) -> PathBuf {
 /// 2) If `%URL%` is a direct `.xp` URL, use it as-is
 /// 3) If `%URL%` points to a GitHub repo, derive release URL:
 ///    `<url>/releases/download/<name>-<version>/<filename>`
-pub fn package_download_candidates(repo: &Repository, arch: &str, entry: &RepoEntry) -> Vec<String> {
+pub fn package_download_candidates(
+    repo: &Repository,
+    arch: &str,
+    entry: &RepoEntry,
+) -> Vec<String> {
     let mut candidates = Vec::new();
 
     let Some(filename) = entry.filename.as_deref() else {
@@ -216,9 +220,7 @@ pub fn package_download_candidates(repo: &Repository, arch: &str, entry: &RepoEn
         } else if clean.starts_with("https://github.com/") {
             let repo_url = clean.trim_end_matches('/');
             let tag = format!("{}-{}", entry.name, entry.version);
-            candidates.push(format!(
-                "{repo_url}/releases/download/{tag}/{filename}"
-            ));
+            candidates.push(format!("{repo_url}/releases/download/{tag}/{filename}"));
         }
     }
 
@@ -236,9 +238,7 @@ pub fn download_first_available(urls: &[String], dest: &Path, retries: u32) -> X
         }
     }
 
-    Err(last_error.unwrap_or_else(|| {
-        XpmError::Database("no usable package URL found".to_string())
-    }))
+    Err(last_error.unwrap_or_else(|| XpmError::Database("no usable package URL found".to_string())))
 }
 
 /// Verify SHA-256 for a file if checksum metadata is available.
@@ -323,12 +323,13 @@ fn download_once(url: &str, dest: &Path) -> XpmResult<()> {
         downloaded += n as u64;
 
         if let Some(total) = total {
-            if total > 0 {
-                let percent = downloaded.saturating_mul(100) / total;
-                if percent >= next_report {
-                    tracing::debug!(url, downloaded, total, percent, "download progress");
-                    next_report = (next_report + 25).min(100);
-                }
+            let percent = total
+                .checked_div(1)
+                .map(|_| downloaded.saturating_mul(100) / total)
+                .unwrap_or(0);
+            if percent >= next_report {
+                tracing::debug!(url, downloaded, total, percent, "download progress");
+                next_report = (next_report + 25).min(100);
             }
         }
     }
@@ -399,15 +400,8 @@ mod tests {
         let keyring = temp.path().join("trustedkeys.gpg");
         std::fs::write(&keyring, b"not-a-real-keyring").expect("write keyring placeholder");
 
-        let result = sync_repo_databases(
-            &repo,
-            "x86_64",
-            &sync,
-            2,
-            SigLevel::Never,
-            &keyring,
-        )
-        .expect("sync repo");
+        let result = sync_repo_databases(&repo, "x86_64", &sync, 2, SigLevel::Never, &keyring)
+            .expect("sync repo");
         assert!(result.db_downloaded);
         assert!(result.files_downloaded);
         assert!(sync.join("core.db").exists());
@@ -479,7 +473,8 @@ mod tests {
 
         let keyring = temp.path().join("trustedkeys.gpg");
         let mut keyring_file = fs::File::create(&keyring).expect("create keyring");
-        cert.serialize(&mut keyring_file).expect("write keyring cert");
+        cert.serialize(&mut keyring_file)
+            .expect("write keyring cert");
 
         let repo = Repository {
             name: "core".to_string(),
@@ -518,7 +513,8 @@ mod tests {
 
         let keyring = temp.path().join("trustedkeys.gpg");
         let mut keyring_file = fs::File::create(&keyring).expect("create keyring");
-        cert.serialize(&mut keyring_file).expect("write keyring cert");
+        cert.serialize(&mut keyring_file)
+            .expect("write keyring cert");
 
         let sig_url = format!("file://{}", sig_path.display());
         let err = verify_remote_signature(&package_dest, &sig_url, SigLevel::Required, &keyring, 2)

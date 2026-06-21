@@ -17,5 +17,5 @@ pub mod transaction;
 // Re-export key types for convenience.
 pub use config::XpmConfig;
 pub use error::{XpmError, XpmResult};
-pub use transaction::{Transaction, TransactionOp, TransactionState, FileLock};
-pub use hooks::{Hook, HookChain, HookContext, OperationType};
+pub use hooks::{Hook, HookChain, HookContext, OperationType, PostScriptletHook, PreScriptletHook};
+pub use transaction::{FileLock, Transaction, TransactionOp, TransactionState};

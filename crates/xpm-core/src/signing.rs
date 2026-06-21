@@ -21,15 +21,12 @@ pub fn load_keyring(path: &Path) -> XpmResult<Vec<Cert>> {
     let data = std::fs::read(path)
         .map_err(|e| XpmError::SignatureError(format!("read keyring {}: {e}", path.display())))?;
 
-    let parser = CertParser::from_bytes(&data).map_err(|e| {
-        XpmError::SignatureError(format!("parse keyring {}: {e}", path.display()))
-    })?;
+    let parser = CertParser::from_bytes(&data)
+        .map_err(|e| XpmError::SignatureError(format!("parse keyring {}: {e}", path.display())))?;
 
     let mut certs = Vec::new();
     for cert in parser {
-        certs.push(
-            cert.map_err(|e| XpmError::SignatureError(format!("keyring entry: {e}")))?,
-        );
+        certs.push(cert.map_err(|e| XpmError::SignatureError(format!("keyring entry: {e}")))?);
     }
 
     Ok(certs)
