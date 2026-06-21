@@ -2,6 +2,13 @@
 
 <p>Modern, high-performance package manager written in pure Rust for X</p>
 
+<p align="center">
+    <img alt="License" src="https://img.shields.io/badge/license-GPL--3.0--or--later-blue.svg">
+    <img alt="Rust" src="https://img.shields.io/badge/Rust-000000?logo=rust&logoColor=white">
+    <img alt="Version" src="https://img.shields.io/github/v/release/xscriptor/xpm?include_prereleases&label=version">
+    <img alt="Status" src="https://img.shields.io/badge/Status-Active%20Development-2ea44f">
+</p>
+
 <h2 align="center" id="menu">Menu</h2>
 
 <ul>
