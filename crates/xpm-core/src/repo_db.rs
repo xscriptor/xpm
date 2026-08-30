@@ -269,7 +269,7 @@ mod tests {
         let bytes = make_gzip_tar(&[
             (
                 "hello-1.0-1/desc",
-                "%NAME%\nhello\n\n%VERSION%\n1.0-1\n\n%FILENAME%\nhello-1.0-1-x86_64.xp\n\n%SHA256SUM%\nabc123\n\n%URL%\nhttps://github.com/xscriptor/hello\n\n%DESC%\nhello package\n\n%ARCH%\nx86_64\n",
+                "%NAME%\nhello\n\n%VERSION%\n1.0-1\n\n%FILENAME%\nhello-1.0-1-x86_64.xp\n\n%SHA256SUM%\nabc123\n\n%URL%\nhttps://github.com/xlnux/hello\n\n%DESC%\nhello package\n\n%ARCH%\nx86_64\n",
             ),
             (
                 "hello-1.0-1/depends",
@@ -298,7 +298,7 @@ mod tests {
         assert_eq!(hello.sha256sum.as_deref(), Some("abc123"));
         assert_eq!(
             hello.url.as_deref(),
-            Some("https://github.com/xscriptor/hello")
+            Some("https://github.com/xlnux/hello")
         );
         assert_eq!(hello.depends, vec!["libc>=2.39"]);
         assert_eq!(hello.provides, vec!["hello-bin"]);
@@ -402,7 +402,7 @@ mod tests {
         let bytes = make_gzip_tar(&[
             (
                 "xpkg-0.1.0-1/desc",
-                "%NAME%\nxpkg\n\n%VERSION%\n0.1.0-1\n\n%FILENAME%\nxpkg-0.1.0-1-x86_64.xp\n\n%SHA256SUM%\ndeadbeefcafebabe0000000000000000deadbeefcafebabe0000000000000000\n\n%URL%\nhttps://github.com/xscriptor/xpkg\n\n%DESC%\nX distribution package builder\n\n%ARCH%\nx86_64\n",
+                "%NAME%\nxpkg\n\n%VERSION%\n0.1.0-1\n\n%FILENAME%\nxpkg-0.1.0-1-x86_64.xp\n\n%SHA256SUM%\ndeadbeefcafebabe0000000000000000deadbeefcafebabe0000000000000000\n\n%URL%\nhttps://github.com/xlnux/xpkg\n\n%DESC%\nX distribution package builder\n\n%ARCH%\nx86_64\n",
             ),
             (
                 "xpkg-0.1.0-1/depends",
@@ -424,7 +424,7 @@ mod tests {
         );
         assert_eq!(
             xpkg.url.as_deref(),
-            Some("https://github.com/xscriptor/xpkg")
+            Some("https://github.com/xlnux/xpkg")
         );
         assert_eq!(xpkg.depends, vec!["rust"]);
         assert_eq!(xpkg.provides, vec!["xpkg-core"]);

@@ -34,5 +34,5 @@ The following are in scope:
 
 | Version | Supported |
 |---------|-----------|
-| Latest `main` | ✅ |
+| Latest `main` | Yes |
 | Older releases | Best effort |
