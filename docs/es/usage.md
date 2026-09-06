@@ -1,0 +1,255 @@
+# xpm — Uso
+
+Referencia de uso completa del binario `xpm`, basada en `crates/xpm/src/cli.rs`,
+`crates/xpm/src/main.rs` y el README del proyecto.
+
+---
+
+## Flags globales
+
+Estas flags las acepta cualquier subcomando.
+
+| Flag | Corta | Valor | Descripción |
+|------|-------|-------|-------------|
+| `--config` | `-c` | `PATH` | Ruta del archivo de configuración (por defecto `/etc/xpm.conf`) |
+| `--verbose` | `-v` | contador | Aumenta la verbosidad (`-v`, `-vv`, `-vvv`) |
+| `--no-confirm` | | | Omite los prompts de confirmación |
+| `--root` | | `PATH` | Directorio raíz de instalación alternativo |
+| `--dbpath` | | `PATH` | Directorio de base de datos alternativo |
+| `--cachedir` | | `PATH` | Directorio de caché alternativo |
+| `--no-color` | | | Desactiva la salida con color |
+
+La CLI está definida con `clap` y exige un subcomando (`arg_required_else_help = true`).
+
+## Comandos
+
+### `sync` — Sincronizar bases de datos de paquetes
+
+Alias: `Sy`. Descarga los archivos de base de datos `.db` (y `.files` best-effort) más recientes
+de cada repositorio configurado y los parsea en bases de datos de sync locales.
+
+```bash
+xpm sync [OPTIONS]
+xpm Sy [OPTIONS]
+```
+
+| Flag | Corta | Descripción |
+|------|-------|-------------|
+| `--force` | `-f` | Fuerza un refresh completo aunque las bases de datos parezcan al día |
+
+Nota de implementación: `cmd_sync` en `main.rs` lanza workers de sync por repositorio en chunks
+paralelos, prueba cada mirror configurado con reintentos, informa qué mirror respondió y luego
+parsea los `.db` / `.files` descargados para poder mostrar el recuento local de paquetes. Los
+fallos de sync remoto se avisan sin abortar toda la ejecución.
+
+### `install` — Instalar paquetes
+
+Alias: `S`. Instala uno o más paquetes por nombre desde las bases de datos sincronizadas.
+
+```bash
+xpm install <PACKAGES>... [OPTIONS]
+xpm S <PACKAGES>... [OPTIONS]
+```
+
+| Flag | Corta | Descripción |
+|------|-------|-------------|
+| `--download-only` | `-w` | Solo descarga los paquetes, sin instalarlos |
+| `--as-deps` | | Marca el paquete como instalado como dependencia |
+| `--as-explicit` | | Marca el paquete como instalado explícitamente |
+| `--no-optional` | | Omite las dependencias opcionales |
+
+Comportamiento (de `main.rs`): el paquete se localiza por nombre exacto recorriendo los
+repositorios configurados en orden (gana el primero que lo ofrezca), se descarga al directorio
+de caché, se comprueba contra un `.sig` remoto según el `sig_level` efectivo y contra el
+`sha256sum` cuando la entrada de la base de datos lo incluye. La descarga se convierte entonces
+en una operación de instalación sobre un `Transaction`. Con `--download-only` la ejecución se
+detiene tras descargar. En caso contrario xpm pide confirmación (salvo `--no-confirm`) y luego
+prepara y commitea la transacción, que extrae los archivos y registra el paquete en la base de
+datos local.
+
+Nota: pese al mensaje "Resolving dependencies...", el camino de instalación actual del CLI no
+ejecuta el solver SAT; selecciona el paquete por nombre desde la base de datos sincronizada.
+
+### `remove` — Eliminar paquetes
+
+Alias: `R`. Elimina paquetes instalados usando el manifest de archivos registrado en la base de
+datos local.
+
+```bash
+xpm remove <PACKAGES>... [OPTIONS]
+xpm R <PACKAGES>... [OPTIONS]
+```
+
+| Flag | Corta | Descripción |
+|------|-------|-------------|
+| `--recursive` | `-s` | Elimina también las dependencias no necesarias |
+| `--no-deps` | `-d` | Omite las comprobaciones de dependencias |
+| `--nosave` | `-n` | Elimina también los archivos de configuración (purga) |
+
+El paquete debe estar registrado en la base de datos local (si no, xpm informa de que no está
+instalado). Se pide confirmación salvo `--no-confirm`.
+
+### `upgrade` — Actualización del sistema
+
+Alias: `Su`. Actualiza todos los paquetes instalados a las versiones más recientes disponibles.
+
+```bash
+xpm upgrade [OPTIONS]
+xpm Su [OPTIONS]
+```
+
+| Flag | Corta | Descripción |
+|------|-------|-------------|
+| `--force` | | Fuerza la reinstalación de paquetes ya al día |
+| `--ignore` | | Omite paquetes concretos (repetible, `--ignore <PKG>`) |
+
+`upgrade` refresca siempre primero las bases de datos (equivalente a `pacman -Syu`), compara las
+versiones instaladas con las entradas remotas más recientes usando la comparación de versiones
+compatible con ALPM, y planifica operaciones remove+install por paquete cambiado. Sin paquetes
+instalados informa de que no hay nada que hacer.
+
+### `query` — Consultar la base de datos local
+
+Alias: `Q`. Lista los paquetes instalados desde la base de datos local.
+
+```bash
+xpm query [FILTER] [OPTIONS]
+xpm Q [FILTER] [OPTIONS]
+```
+
+| Argumento / Flag | Corta | Descripción |
+|------------------|-------|-------------|
+| `FILTER` | | Filtro opcional por nombre de paquete |
+| `--explicit` | `-e` | Solo paquetes instalados explícitamente |
+| `--deps` | `-d` | Solo paquetes instalados como dependencias |
+| `--orphans` | `-t` | Paquetes huérfanos (ya no requeridos) |
+| `--upgrades` | `-u` | Paquetes con actualizaciones disponibles |
+
+Nota de implementación: las flags y el filtro se parsean, pero el handler es hoy un stub que solo
+imprime el tipo de filtro pretendido.
+
+### `search` — Buscar paquetes
+
+Alias: `Ss`. Busca paquetes por nombre, descripción o provides.
+
+```bash
+xpm search <QUERY> [OPTIONS]
+xpm Ss <QUERY> [OPTIONS]
+```
+
+| Flag | Corta | Descripción |
+|------|-------|-------------|
+| `--local` | `-l` | Busca en la base de datos local en lugar de en las de sync |
+
+Nota de implementación: actualmente es un stub.
+
+### `info` — Información de paquete
+
+Alias: `Si`. Muestra información detallada de un paquete.
+
+```bash
+xpm info <PACKAGE> [OPTIONS]
+xpm Si <PACKAGE> [OPTIONS]
+```
+
+| Flag | Corta | Descripción |
+|------|-------|-------------|
+| `--local` | `-l` | Consulta la base de datos local en lugar de las de sync |
+
+Nota de implementación: actualmente es un stub.
+
+### `files` — Listar archivos de un paquete
+
+Alias: `Ql`. Lista todos los archivos que pertenecen a un paquete instalado.
+
+```bash
+xpm files <PACKAGE>
+xpm Ql <PACKAGE>
+```
+
+Nota de implementación: actualmente es un stub.
+
+### `repo` — Gestión de repositorios
+
+Gestiona los repositorios añadidos por el usuario (temporales). Los predefinidos vienen de
+`/etc/xpm.conf`; los añadidos por el usuario se guardan como archivos TOML bajo `/etc/xpm.d/`.
+
+```bash
+xpm repo list                 # repositorios predefinidos + añadidos por el usuario
+xpm repo add <NAME> <URL>     # añade un repositorio temporal
+xpm repo remove <NAME>        # elimina un repositorio añadido por el usuario
+```
+
+Ejemplos (del help integrado):
+
+```bash
+xpm repo add chaotic-aur https://cdn-mirror.chaotic.cx/$repo/$arch
+xpm repo add my-repo https://username.github.io/my-repo/$arch
+xpm repo add local file:///srv/packages/$arch
+```
+
+`repo add` se niega a sobrescribir una entrada existente del mismo nombre. Tras añadir un
+repositorio, ejecuta `xpm sync` para traer su base de datos.
+
+### `usage` — Ayuda integrada
+
+Muestra ayuda de uso detallada para toda la herramienta o para un tema/comando.
+
+```bash
+xpm usage                    # visión general
+xpm usage commands           # lista todos los comandos
+xpm usage config             # formato del archivo de configuración
+xpm usage repos              # gestión de repositorios
+xpm usage <command>          # ayuda de un comando concreto (sync, install, remove, upgrade, ...)
+```
+
+`xpm <command> --help` también funciona vía clap.
+
+## Aliases estilo pacman
+
+| Alias | Se asigna a | Equivalente en pacman |
+|-------|-------------|-----------------------|
+| `Sy` | `sync` | `pacman -Sy` |
+| `S` | `install` | `pacman -S` |
+| `R` | `remove` | `pacman -R` |
+| `Su` | `upgrade` | `pacman -Su` |
+| `Q` | `query` | `pacman -Q` |
+| `Ss` | `search` | `pacman -Ss` |
+| `Si` | `info` | `pacman -Si` |
+| `Ql` | `files` | `pacman -Ql` |
+
+## Flujo de trabajo típico
+
+```bash
+xpm sync                       # refresca las bases de datos de paquetes
+xpm install <package>          # instala un paquete
+xpm upgrade                    # actualiza los paquetes instalados (hace sync primero)
+xpm query                      # lista los paquetes instalados
+xpm remove <package>           # elimina un paquete
+```
+
+El uso no interactivo (scripts) necesita `--no-confirm`. Para experimentos aislados/sin root usa
+`--config`, `--root`, `--dbpath` y `--cachedir` apuntando a directorios temporales; cuando la
+raíz de instalación no es `/`, xpm activa la integración de shell y crea shims de comandos en
+`~/.local/bin` (con líneas de export de PATH en `~/.bashrc` y `~/.zshrc`).
+
+## Variables de entorno y códigos de salida
+
+`RUST_LOG` se respeta a través del `EnvFilter` de `tracing-subscriber` para controlar la
+verbosidad de los logs. `docs/CLI.md` documenta además `XPM_CONFIG`, `XPM_CACHE_DIR` y
+`NO_COLOR`.
+
+`docs/CLI.md` documenta una matriz de códigos de salida (0 éxito, 1 error general, 2 error de
+uso, hasta 7 base de datos bloqueada). Nota: esa matriz es intención documentada más que un
+contrato impuesto en el código actual; en la práctica clap reporta errores de uso, `anyhow`
+reporta fallos en runtime y el resto de códigos documentados aún no los emite `main.rs`.
+Verifícalo contra el código antes de depender de un código concreto.
+
+## Referencias
+
+- Referencia CLI existente: [`../CLI.md`](../CLI.md)
+- Objetivos de fetch y layout de mirrors: [`../FETCH_TARGETS.md`](../FETCH_TARGETS.md)
+- Guía rápida de install/upgrade: [`../INSTALL_AND_UPGRADE.md`](../INSTALL_AND_UPGRADE.md)
+- Configuración de ejemplo: [`../../etc/xpm.conf.example`](../../etc/xpm.conf.example)
+- Definición de comandos: [`../../crates/xpm/src/cli.rs`](../../crates/xpm/src/cli.rs),
+  despacho: [`../../crates/xpm/src/main.rs`](../../crates/xpm/src/main.rs)
