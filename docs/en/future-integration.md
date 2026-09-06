@@ -94,7 +94,7 @@ compatibility surfaces and documented carefully when they change:
 
 When xpm work resumes, the workspace conventions apply as they do today: work happens on the
 `x/reboot` branch of this repo, commits stay local (no push), commit messages carry no emojis or
-assistant references, and each phase closes with local tests before moving on. Keep any
+external-tool references, and each phase closes with local tests before moving on. Keep any
 integration decision recorded in the repo or folder it belongs to.
 
 ## See also

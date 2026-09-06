@@ -40,7 +40,7 @@ independent GitHub repo with its own origin. The relevant folders are:
 
 This repo follows the shared conventions of the workspace: work for the reboot initiative lives
 on the `x/reboot` branch of each repo, commits stay local (no push), and messages carry no emojis
-or assistant references.
+or external-tool references.
 
 ## Current status (honest)
 
