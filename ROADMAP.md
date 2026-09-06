@@ -214,3 +214,5 @@ gantt
 > - `v0.5.0` — Phases 3-5 complete (native engine operational)
 > - `v0.8.0` — Phases 6-7 complete (security + transactions)
 > - `v1.0.0` — Phase 8 complete (benchmarked, tested, production-ready)
+
+Nota: ya no hay sincronizacion roadmap->issues (workflow eliminado).

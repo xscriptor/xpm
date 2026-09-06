@@ -513,3 +513,4 @@ xpm repo list
         <a href="https://github.com/xscriptor">X Profile</a>
     </p>
 </div>
+- Documentation: https://github.com/xlnux/wiki
